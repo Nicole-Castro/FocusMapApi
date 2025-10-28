@@ -1,5 +1,7 @@
 # Etapa de build
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# Etapa de build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+
 WORKDIR /src
 
 # Copia tudo
@@ -10,7 +12,7 @@ RUN dotnet restore
 RUN dotnet publish -c Release -o /app
 
 # Etapa de runtime
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
 COPY --from=build /app .
 
