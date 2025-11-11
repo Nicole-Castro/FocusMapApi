@@ -1,6 +1,7 @@
 using FocusMapApi.DTO.User;
 using FocusMapApi.Models;
 using FocusMapApi.Services.User;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ActionConstraints;
@@ -9,6 +10,7 @@ namespace FocusMapApi.Controllers.User
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class UserController : ControllerBase
     {
         private IUserService _user;
@@ -37,7 +39,7 @@ namespace FocusMapApi.Controllers.User
         {
             if (user == null)
                 return BadRequest("Usuário inválido.");
-            
+
             var userIdClaim = User.FindFirst("UserId")?.Value;
             Guid.TryParse(userIdClaim, out var userId);
             var result = await _user.CreateUserPatient(user, userId);

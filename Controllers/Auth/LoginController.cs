@@ -33,6 +33,7 @@ namespace FocusMapApi.Controllers.Auth
             return Ok(result);
         }
 
+        [Authorize]
         [HttpGet("me")]
         public IActionResult GetCurrentUser()
         {
