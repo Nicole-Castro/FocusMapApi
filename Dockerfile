@@ -1,5 +1,4 @@
 # Etapa de build
-# Etapa de build
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
 WORKDIR /src
@@ -16,8 +15,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
 COPY --from=build /app .
 
-# Porta usada pelo Render
-ENV ASPNETCORE_URLS=http://+:10000
-EXPOSE 10000
+# Porta usada pelo Render (OBRIGATORIAMENTE 8080)
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "FocusMapApi.dll"]

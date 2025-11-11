@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.WebHost.UseUrls("http://*:8080");
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "FocusMap API", Version = "v1" });
@@ -70,8 +70,9 @@ builder.Services.AddCors(options =>
     );
 });
 var app = builder.Build();
-var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
-app.Urls.Add($"http://*:{port}");
+
+// var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+// app.Urls.Add($"http://*:{port}");
 
 if (app.Environment.IsDevelopment())
 {
