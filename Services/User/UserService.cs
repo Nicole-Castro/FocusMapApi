@@ -16,7 +16,7 @@ public class UserService : IUserService
         _context = context;
     }
 
-    public async Task<string> CreateUser(CreateUserDto user)
+    public async Task<ResponseModel<string>> CreateUser(CreateUserDto user)
     {
         try
         {
@@ -25,7 +25,12 @@ public class UserService : IUserService
             );
             if (getUsers != null)
             {
-                return "Email já cadastrado";
+                return new ResponseModel<string>
+                {
+                    Success = false,
+                    Message = "Email já cadastrado",
+                    StatusCode = 400,
+                };
             }
 
             var u = new UsersModel
@@ -37,15 +42,28 @@ public class UserService : IUserService
             };
             _context.professionals.Add(u);
             await _context.SaveChangesAsync();
-            return "Usuário Cadastrado com sucesso";
+            return new ResponseModel<string>
+            {
+                Success = true,
+                Message = "Usuário Cadastrado com sucesso",
+                StatusCode = 200,
+            };
         }
         catch (Exception ex)
         {
-            return $"Erro ao cadastrar usuario: {ex}";
+            return new ResponseModel<string>
+            {
+                Success = false,
+                Message = $"Erro ao cadastrar usuario: {ex}",
+                StatusCode = 500,
+            };
         }
     }
 
-    public async Task<bool> CreateUserPatient(CreatePatientDto patient, Guid userId)
+    public async Task<ResponseModel<string>> CreateUserPatient(
+        CreatePatientDto patient,
+        Guid userId
+    )
     {
         try
         {
@@ -54,7 +72,12 @@ public class UserService : IUserService
                 .AnyAsync(u => u.email.ToLower() == patient.email.ToLower());
 
             if (exists)
-                return false;
+                return new ResponseModel<string>
+                {
+                    Success = false,
+                    Message = "Email já cadastrado",
+                    StatusCode = 400,
+                };
 
             var u = new PatientModel
             {
@@ -62,66 +85,111 @@ public class UserService : IUserService
                 email = patient.email,
                 name = patient.name,
                 password = BCrypt.Net.BCrypt.HashPassword(patient.password),
-                professional_id = userId
+                professional_id = userId,
             };
 
             _context.patients.Add(u);
             await _context.SaveChangesAsync();
 
-            return true;
+            return new ResponseModel<string>
+            {
+                Success = true,
+                Message = "Usuário Cadastrado com sucesso",
+                StatusCode = 200,
+            };
         }
         catch (DbUpdateException ex)
             when (ex.InnerException is PostgresException pg && pg.SqlState == "23505")
         {
-            return false;
+            return new ResponseModel<string>
+            {
+                Success = false,
+                Message = "Erro ao cadastrar usuario: Email já cadastrado",
+                StatusCode = 400,
+            };
         }
         catch (Exception ex)
         {
-            return false;
+            return new ResponseModel<string>
+            {
+                Success = false,
+                Message = $"Erro ao cadastrar usuario: {ex}",
+                StatusCode = 500,
+            };
         }
     }
 
-    public async Task<string> UpdateUser(UpdateUserDto user, Guid id)
+    public async Task<ResponseModel<string>> UpdateUser(UpdateUserDto user, Guid id)
     {
         try
         {
             var getUser = await _context.professionals.FirstOrDefaultAsync(a => a.id == id);
             if (getUser == null)
             {
-                return "Usuário não encontrado";
+                return new ResponseModel<string>
+                {
+                    Success = false,
+                    Message = "Usuário não encontrado",
+                    StatusCode = 404,
+                };
             }
             getUser.name = user.name ?? getUser.name;
             getUser.password = BCrypt.Net.BCrypt.HashPassword(user.password) ?? getUser.password;
 
             _context.professionals.Update(getUser);
             await _context.SaveChangesAsync();
-            return "Atualizado com sucesso";
+            return new ResponseModel<string>
+            {
+                Success = true,
+                Message = "Atualizado com sucesso",
+                StatusCode = 200,
+            };
         }
         catch (Exception ex)
         {
-            return $"Erro ao realizar atualização: {ex}";
+            return new ResponseModel<string>
+            {
+                Success = false,
+                Message = $"Erro ao realizar atualização: {ex}",
+                StatusCode = 500,
+            };
         }
     }
 
-    public async Task<string> UpdateUserPatient(UpdateUserDto patient, Guid id)
+    public async Task<ResponseModel<string>> UpdateUserPatient(UpdateUserDto patient, Guid id)
     {
         try
         {
             var getUser = await _context.patients.FirstOrDefaultAsync(a => a.id == id);
             if (getUser == null)
             {
-                return "Usuário não encontrado";
+                return new ResponseModel<string>
+                {
+                    Success = false,
+                    Message = "Usuário não encontrado",
+                    StatusCode = 404,
+                };
             }
             getUser.name = patient.name ?? getUser.name;
             getUser.password = BCrypt.Net.BCrypt.HashPassword(patient.password) ?? getUser.password;
 
             _context.patients.Update(getUser);
             await _context.SaveChangesAsync();
-            return "Atualizado com sucesso";
+            return new ResponseModel<string>
+            {
+                Success = true,
+                Message = "Atualizado com sucesso",
+                StatusCode = 200,
+            };
         }
         catch (Exception ex)
         {
-            return $"Erro ao realizar atualização: {ex}";
+            return new ResponseModel<string>
+            {
+                Success = false,
+                Message = $"Erro ao realizar atualização: {ex}",
+                StatusCode = 500,
+            };
         }
     }
 }

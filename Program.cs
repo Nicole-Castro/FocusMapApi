@@ -1,6 +1,9 @@
 using System.Text;
 using ACGSimBack.Services.Auth;
 using FocusMapApi.Data;
+using FocusMapApi.Services.InterestPoints;
+using FocusMapApi.Services.SessionData;
+using FocusMapApi.Services.Sessions;
 using FocusMapApi.Services.User;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://*:8080");
+builder.WebHost.UseUrls("http://*:8080;https://localhost:8080");
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "FocusMap API", Version = "v1" });
@@ -77,6 +80,9 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthInterface, AuthService>();
+builder.Services.AddScoped<IInterestPointsService, InterestPointsService>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<ISessionDataService, SessionDataService>();
 
 var allowedOrigins =
     builder

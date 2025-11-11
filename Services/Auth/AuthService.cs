@@ -22,10 +22,15 @@ public class AuthService : IAuthInterface
         _context = context;
     }
 
-    public async Task<object> Login(LoginDto loginDto)
+    public async Task<ResponseModel<object>> Login(LoginDto loginDto)
     {
         if (string.IsNullOrWhiteSpace(loginDto.email))
-            return new { Status = false, Message = "E-mail inválido ou não informado." };
+            return new ResponseModel<object>
+            {
+                Success = false,
+                Message = "E-mail inválido ou não informado.",
+                StatusCode = 400,
+            };
 
         var email = loginDto.email.ToLower();
 
@@ -37,20 +42,30 @@ public class AuthService : IAuthInterface
                 : null;
 
         if (patient == null && professional == null)
-            return new { Status = false, Message = "Usuário não encontrado." };
+            return new ResponseModel<object>
+            {
+                Success = false,
+                Message = "Usuário não encontrado.",
+                StatusCode = 404,
+            };
 
         var user = (object)patient ?? professional;
 
         string storedPassword = patient?.password ?? professional?.password;
 
         if (!BCrypt.Net.BCrypt.Verify(loginDto.password, storedPassword))
-            return new { Status = false, Message = "Senha inválida." };
+            return new ResponseModel<object>
+            {
+                Success = false,
+                Message = "Senha incorreta.",
+                StatusCode = 401,
+            };
 
         var jwt = GenerateJwtToken(user);
 
-        return new
+        return new ResponseModel<object>
         {
-            Status = true,
+            Success = true,
             Data = new
             {
                 id = patient?.id ?? professional?.id,
