@@ -74,6 +74,8 @@ public class AuthService : IAuthInterface
                 email = patient?.email ?? professional?.email,
                 type = patient != null ? "patient" : "professional",
             },
+            Message = "Usuário logado com sucesso.",
+            StatusCode = 200,
         };
     }
 

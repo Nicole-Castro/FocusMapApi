@@ -27,7 +27,7 @@ namespace FocusMapApi.Controllers.Auth
         {
             dynamic result = await _authService.Login(loginDto);
 
-            if (result.Status == false)
+            if (result.Success == false)
                 return Unauthorized(result.Message);
 
             return Ok(result);
