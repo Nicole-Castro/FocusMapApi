@@ -2,6 +2,7 @@ using System.Text;
 using ACGSimBack.Services.Auth;
 using FocusMapApi.Data;
 using FocusMapApi.Services.InterestPoints;
+using FocusMapApi.Services.OpenAi;
 using FocusMapApi.Services.SessionData;
 using FocusMapApi.Services.Sessions;
 using FocusMapApi.Services.User;
@@ -56,6 +57,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 var key = builder.Configuration["Jwt:Key"] ?? "super-secret-key";
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
+builder.Services.AddHttpClient<OpenAiService>();
 
 builder
     .Services.AddAuthentication(options =>
