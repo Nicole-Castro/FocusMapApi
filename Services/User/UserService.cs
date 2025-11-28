@@ -1,4 +1,5 @@
 using System;
+using System.Security.Claims;
 using FocusMapApi.Data;
 using FocusMapApi.DTO.User;
 using FocusMapApi.Models;
@@ -114,6 +115,35 @@ public class UserService : IUserService
             {
                 Success = false,
                 Message = $"Erro ao cadastrar usuario: {ex}",
+                StatusCode = 500,
+            };
+        }
+    }
+
+    public async Task<ResponseModel<List<ListPatientsDto>>> ListPatients(Guid id)
+    {
+        try
+        {
+            var patients = await _context
+                .patients.Where(p => p.professional_id == id)
+                .Select(p => new ListPatientsDto { name = p.name, email = p.email })
+                .ToListAsync();
+
+            return new ResponseModel<List<ListPatientsDto>>
+            {
+                Success = true,
+                Message = "Lista de pacientes obtida com sucesso",
+                Data = patients,
+                StatusCode = 200,
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ResponseModel<List<ListPatientsDto>>
+            {
+                Success = false,
+                Message = $"Erro ao obter lista de pacientes: {ex.Message}",
+                Data = null,
                 StatusCode = 500,
             };
         }

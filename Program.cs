@@ -11,7 +11,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://*:8080;");
+
+// builder.WebHost.UseUrls("http://*:8080;");
+builder.WebHost.UseUrls("http://localhost:5000;");
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "FocusMap API", Version = "v1" });

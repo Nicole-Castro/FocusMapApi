@@ -77,5 +77,18 @@ namespace FocusMapApi.Controllers.User
 
             return Ok(result);
         }
+
+        [HttpGet("ListPatients")]
+        public async Task<IActionResult> ListPatients()
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            Guid.TryParse(userIdClaim, out var userId);
+            var result = await _user.ListPatients(userId);
+
+            if (result == null)
+                return StatusCode(500, "Erro ao listar pacientes.");
+
+            return Ok(result);
+        }
     }
 }
