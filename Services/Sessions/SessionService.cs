@@ -24,7 +24,7 @@ public class SessionService : ISessionService
             {
                 PatientId = sessionCreateDto.patient_id,
                 SessionStartTime = DateTime.UtcNow,
-                SessionName = "session-" + Guid.NewGuid().ToString(),
+                SessionName = "session-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"),
             };
 
             await _context.sessions.AddAsync(session);
@@ -35,6 +35,7 @@ public class SessionService : ISessionService
                 Success = true,
                 Message = "Session created successfully",
                 StatusCode = 201,
+                Data = session.Id.ToString(),
             };
         }
         catch (Exception ex)
