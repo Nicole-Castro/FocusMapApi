@@ -1,4 +1,5 @@
 using FocusMapApi.Services.OpenAi;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -6,6 +7,7 @@ namespace FocusMapApi.Controllers.OpenAI
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class OpenAIController : ControllerBase
     {
         private readonly OpenAiService _openAI;
