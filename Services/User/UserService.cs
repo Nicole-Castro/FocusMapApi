@@ -1,7 +1,9 @@
 using System;
+using ACGSimBack.Services.Auth;
 using FocusMapApi.Data;
 using FocusMapApi.DTO.User;
 using FocusMapApi.Models;
+using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -10,6 +12,7 @@ namespace FocusMapApi.Services.User;
 public class UserService : IUserService
 {
     private AppDbContext _context;
+    private IAuthInterface _authService;
 
     public UserService(AppDbContext context)
     {
@@ -117,6 +120,45 @@ public class UserService : IUserService
                 StatusCode = 500,
             };
         }
+    }
+
+    public async Task<ResponseModel<object>> GoogleSignUp(GoogleAuthDto dto)
+    {
+        var payload = await GoogleJsonWebSignature.ValidateAsync(dto.Token);
+
+        var existingUser = await _context.professionals.FirstOrDefaultAsync(u =>
+            u.email == payload.Email
+        );
+
+        UsersModel user;
+
+        if (existingUser == null)
+        {
+            user = new UsersModel
+            {
+                id = Guid.NewGuid(),
+                email = payload.Email,
+                name = payload.Name,
+                password = null,
+            };
+
+            _context.professionals.Add(user);
+            await _context.SaveChangesAsync();
+        }
+        else
+        {
+            user = existingUser;
+        }
+
+        var token = _authService.GenerateJwtToken(user);
+
+        return new ResponseModel<object>
+        {
+            Success = true,
+            Message = "Autenticado via Google",
+            StatusCode = 200,
+            Data = new { token, user.id },
+        };
     }
 
     public async Task<ResponseModel<string>> UpdateUser(UpdateUserDto user, Guid id)

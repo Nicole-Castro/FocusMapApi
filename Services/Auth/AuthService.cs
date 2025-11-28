@@ -79,7 +79,7 @@ public class AuthService : IAuthInterface
         };
     }
 
-    private string GenerateJwtToken(object user)
+    public string GenerateJwtToken(object user)
     {
         string userId = string.Empty;
         string email = string.Empty;
@@ -124,5 +124,28 @@ public class AuthService : IAuthInterface
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public async Task<ResponseModel<object>> GoogleLogin(GoogleLoginDto dto)
+    {
+        var user = await _context.professionals.FirstOrDefaultAsync(x => x.email == dto.Email);
+        if (user == null)
+        {
+            return new ResponseModel<object>()
+            {
+                Success = false,
+                Message = "Usuário não encontrado. Por favor, faça o cadastro.",
+                StatusCode = 404,
+            };
+        }
+        var token = GenerateJwtToken(user);
+
+        return new ResponseModel<object>
+        {
+            Success = true,
+            Message = "Autenticado via Google",
+            StatusCode = 200,
+            Data = new { token, user.id },
+        };
     }
 }

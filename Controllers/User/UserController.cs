@@ -77,5 +77,20 @@ namespace FocusMapApi.Controllers.User
 
             return Ok(result);
         }
+
+        [HttpPost("GoogleSignUp")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GoogleSignUp([FromBody] GoogleAuthDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Dados inválidos.");
+
+            var result = await _user.GoogleSignUp(dto);
+
+            if (result == null)
+                return StatusCode(500, "Erro ao autenticar usuário.");
+
+            return Ok(result);
+        }
     }
 }
