@@ -71,5 +71,17 @@ namespace FocusMapApi.Controllers.Auth
 
             return NotFound(new { Message = "Usuário não encontrado." });
         }
+
+        [HttpPost("GoogleLogin")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
+        {
+            dynamic result = await _authService.GoogleLogin(dto);
+
+            if (result.Success == false)
+                return Unauthorized(result.Message);
+
+            return Ok(result);
+        }
     }
 }
