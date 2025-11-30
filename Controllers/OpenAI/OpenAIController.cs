@@ -10,9 +10,9 @@ namespace FocusMapApi.Controllers.OpenAI
     [Authorize]
     public class OpenAIController : ControllerBase
     {
-        private readonly OpenAiService _openAI;
+        private readonly IOpenAiService _openAI;
 
-        public OpenAIController(OpenAiService openAI)
+        public OpenAIController(IOpenAiService openAI)
         {
             _openAI = openAI;
         }

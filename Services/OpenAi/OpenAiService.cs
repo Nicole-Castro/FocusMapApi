@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace FocusMapApi.Services.OpenAi;
 
-public class OpenAiService
+public class OpenAiService : IOpenAiService
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;

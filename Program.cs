@@ -14,6 +14,7 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.UseUrls("http://*:8080;");
+
 // builder.WebHost.UseUrls("http://localhost:5000;");
 builder.Services.AddSwaggerGen(options =>
 {
@@ -87,6 +88,7 @@ builder.Services.AddScoped<IAuthInterface, AuthService>();
 builder.Services.AddScoped<IInterestPointsService, InterestPointsService>();
 builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<ISessionDataService, SessionDataService>();
+builder.Services.AddScoped<IOpenAiService, OpenAiService>();
 
 var allowedOrigins =
     builder
