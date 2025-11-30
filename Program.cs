@@ -1,6 +1,7 @@
 using System.Text;
 using ACGSimBack.Services.Auth;
 using FocusMapApi.Data;
+using FocusMapApi.Services.AudioDescription;
 using FocusMapApi.Services.InterestPoints;
 using FocusMapApi.Services.OpenAi;
 using FocusMapApi.Services.SessionData;
@@ -89,7 +90,7 @@ builder.Services.AddScoped<IInterestPointsService, InterestPointsService>();
 builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<ISessionDataService, SessionDataService>();
 builder.Services.AddScoped<IOpenAiService, OpenAiService>();
-
+builder.Services.AddScoped<IAudioDescriptionService, AudioDescriptionService>();
 var allowedOrigins =
     builder
         .Configuration["Cors:AllowedOrigins"]
