@@ -89,7 +89,7 @@ public class AuthService : IAuthInterface
         switch (user)
         {
             case PatientModel patient:
-                userId = patient.id?.ToString() ?? "";
+                userId = patient.id.ToString() ?? "";
                 email = patient.email;
                 userType = "patient";
                 break;
