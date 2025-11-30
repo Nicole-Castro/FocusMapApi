@@ -14,9 +14,9 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.UseUrls("http://*:8080;");
+// builder.WebHost.UseUrls("http://*:8080;");
 
-// builder.WebHost.UseUrls("http://localhost:5000;");
+builder.WebHost.UseUrls("http://localhost:5000;");
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "FocusMap API", Version = "v1" });
@@ -91,6 +91,7 @@ builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<ISessionDataService, SessionDataService>();
 builder.Services.AddScoped<IOpenAiService, OpenAiService>();
 builder.Services.AddScoped<IAudioDescriptionService, AudioDescriptionService>();
+
 var allowedOrigins =
     builder
         .Configuration["Cors:AllowedOrigins"]

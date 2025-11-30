@@ -15,21 +15,32 @@ public class UserService : IUserService
     private AppDbContext _context;
     private IAuthInterface _authService;
 
-    public UserService(AppDbContext context)
+    public UserService(AppDbContext context, IAuthInterface authService)
     {
         _context = context;
+        _authService = authService;
     }
 
-    public async Task<ResponseModel<string>> CreateUser(CreateUserDto user)
+    public async Task<ResponseModel<object>> CreateUser(CreateUserDto user)
     {
         try
         {
+            if (user == null)
+            {
+                return new ResponseModel<object>
+                {
+                    Success = false,
+                    Message = "DTO chegou nulo — o JSON não está sendo mapeado.",
+                    StatusCode = 400,
+                };
+            }
             var getUsers = await _context.professionals.FirstOrDefaultAsync(u =>
-                u.email == user.email
+                u.email == user.Email
             );
+
             if (getUsers != null)
             {
-                return new ResponseModel<string>
+                return new ResponseModel<object>
                 {
                     Success = false,
                     Message = "Email já cadastrado",
@@ -40,25 +51,28 @@ public class UserService : IUserService
             var u = new UsersModel
             {
                 id = Guid.NewGuid(),
-                email = user.email,
-                name = user.name,
-                password = BCrypt.Net.BCrypt.HashPassword(user.password),
+                email = user.Email,
+                name = user.Name,
+                password = BCrypt.Net.BCrypt.HashPassword(user.Password),
             };
+
             _context.professionals.Add(u);
             await _context.SaveChangesAsync();
-            return new ResponseModel<string>
+            string token = _authService.GenerateJwtToken(u);
+            return new ResponseModel<object>
             {
                 Success = true,
-                Message = "Usuário Cadastrado com sucesso",
+                Message = "Usuário cadastrado com sucesso",
                 StatusCode = 200,
+                Data = new { id = u.id, token = token },
             };
         }
         catch (Exception ex)
         {
-            return new ResponseModel<string>
+            return new ResponseModel<object>
             {
                 Success = false,
-                Message = $"Erro ao cadastrar usuario: {ex}",
+                Message = $"Erro ao cadastrar usuario: {ex.Message}",
                 StatusCode = 500,
             };
         }
@@ -123,12 +137,23 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<ResponseModel<List<ListPatientsDto>>> ListPatients(Guid id)
+    public async Task<ResponseModel<List<ListPatientsDto>>> ListPatients(
+        Guid id,
+        string? searchTerm = null
+    )
     {
         try
         {
-            var patients = await _context
-                .patients.Where(p => p.professional_id == id)
+            var query = _context.patients.Where(p => p.professional_id == id);
+
+            // Se houver termo de busca, filtra no banco
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                query = query.Where(p => p.name.ToLower().Contains(searchTerm.ToLower()));
+            }
+
+            // Só agora materializa
+            var patients = await query
                 .Select(p => new ListPatientsDto
                 {
                     id = p.id,
@@ -265,6 +290,32 @@ public class UserService : IUserService
             {
                 Success = false,
                 Message = $"Erro ao realizar atualização: {ex}",
+                StatusCode = 500,
+            };
+        }
+    }
+
+    public async Task<ResponseModel<object>> TotalPatients(Guid id)
+    {
+        try
+        {
+            var total = await _context.patients.CountAsync(p => p.professional_id == id);
+
+            return new ResponseModel<object>
+            {
+                Success = true,
+                Message = "Total de pacientes obtido com sucesso",
+                Data = new { total },
+                StatusCode = 200,
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ResponseModel<object>
+            {
+                Success = false,
+                Message = $"Erro ao obter total de pacientes: {ex.Message}",
+                Data = null,
                 StatusCode = 500,
             };
         }

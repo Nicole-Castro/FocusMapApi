@@ -1,10 +1,16 @@
 using System;
+using Newtonsoft.Json;
 
 namespace FocusMapApi.DTO.User;
 
 public class CreateUserDto
 {
-    public string name { get; set; }
-    public string email { get; set; }
-    public string password { get; set; }
+    [JsonProperty("name")]
+    public string Name { get; set; }
+
+    [JsonProperty("email")]
+    public string Email { get; set; }
+
+    [JsonProperty("password")]
+    public string Password { get; set; }
 }

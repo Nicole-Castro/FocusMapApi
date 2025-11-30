@@ -80,12 +80,11 @@ namespace FocusMapApi.Controllers.User
         }
 
         [HttpGet("ListPatients")]
-        public async Task<IActionResult> ListPatients()
+        public async Task<IActionResult> ListPatients([FromQuery] string? searchTerm = null)
         {
             var userIdClaim = User.FindFirst("UserId")?.Value;
             Guid.TryParse(userIdClaim, out var userId);
-            var result = await _user.ListPatients(userId);
-
+            var result = await _user.ListPatients(userId, searchTerm);
             if (result == null)
                 return StatusCode(500, "Erro ao listar pacientes.");
 
@@ -104,6 +103,18 @@ namespace FocusMapApi.Controllers.User
 
             if (result == null)
                 return StatusCode(500, "Erro ao autenticar usuário.");
+
+            return Ok(result);
+        }
+
+        [HttpGet("TotalPatients")]
+        public async Task<IActionResult> TotalPatients()
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            Guid.TryParse(userIdClaim, out var userId);
+            var result = await _user.TotalPatients(userId);
+            if (result == null)
+                return StatusCode(500, "Erro ao obter total de pacientes.");
 
             return Ok(result);
         }
