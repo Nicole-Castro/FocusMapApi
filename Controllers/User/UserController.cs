@@ -20,6 +20,7 @@ namespace FocusMapApi.Controllers.User
             _user = user;
         }
 
+        [AllowAnonymous]
         [HttpPost("CreateUser")]
         public async Task<IActionResult> CreateUser([FromBody] CreateUserDto user)
         {
@@ -91,6 +92,7 @@ namespace FocusMapApi.Controllers.User
             return Ok(result);
         }
 
+        [AllowAnonymous]
         [HttpPost("GoogleSignUp")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> GoogleSignUp([FromBody] GoogleAuthDto dto)
