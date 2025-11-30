@@ -14,7 +14,6 @@ public class Sessions
     [Column("patient_id")]
     public Guid PatientId { get; set; }
 
-    [Required]
     [Column("session_start_time")]
     public DateTime SessionStartTime { get; set; }
 
