@@ -129,7 +129,12 @@ public class UserService : IUserService
         {
             var patients = await _context
                 .patients.Where(p => p.professional_id == id)
-                .Select(p => new ListPatientsDto { name = p.name, email = p.email })
+                .Select(p => new ListPatientsDto
+                {
+                    id = p.id,
+                    name = p.name,
+                    email = p.email,
+                })
                 .ToListAsync();
 
             return new ResponseModel<List<ListPatientsDto>>

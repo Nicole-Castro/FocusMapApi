@@ -8,7 +8,7 @@ namespace FocusMapApi.Models;
 public class PatientModel
 {
     [Key]
-    public Guid? id { get; set; }
+    public Guid id { get; set; }
     public string name { get; set; }
     public string email { get; set; }
     public string password { get; set; }
