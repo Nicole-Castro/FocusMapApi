@@ -52,12 +52,9 @@ namespace FocusMapApi.Controllers.Session
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateSession(
-            Guid id,
-            [FromBody] SessionUpdateDto sessionUpdateDto
-        )
+        public async Task<IActionResult> UpdateSession(Guid id)
         {
-            var result = await _sessionService.UpdateSessionAsync(sessionUpdateDto, id);
+            var result = await _sessionService.UpdateSessionAsync( id);
             if (result.Success)
             {
                 return Ok(result);

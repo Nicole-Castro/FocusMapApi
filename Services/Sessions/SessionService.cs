@@ -169,10 +169,7 @@ public class SessionService : ISessionService
         }
     }
 
-    public async Task<ResponseModel<string>> UpdateSessionAsync(
-        SessionUpdateDto sessionUpdateDto,
-        Guid id
-    )
+    public async Task<ResponseModel<string>> UpdateSessionAsync(Guid id)
     {
         try
         {

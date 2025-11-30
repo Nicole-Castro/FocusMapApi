@@ -110,7 +110,6 @@ public class InterestPointsService : IInterestPointsService
             {
                 id = interestPoint.id,
                 name = interestPoint.name,
-                patient_id = interestPoint.patient_id,
             };
 
             return ResponseModel<InterestPointDto>.Ok(
@@ -141,7 +140,6 @@ public class InterestPointsService : IInterestPointsService
                 {
                     id = interestPoint.id,
                     name = interestPoint.name,
-                    patient_id = interestPoint.patient_id,
                 })
                 .ToList();
 
