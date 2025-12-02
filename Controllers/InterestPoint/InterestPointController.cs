@@ -18,12 +18,16 @@ namespace FocusMapApi.Controllers.InterestPoint
             _interestPointsService = interestPointsService;
         }
 
-        [HttpPost]
+        [HttpPost("{patientId}")]
         public async Task<IActionResult> CreateInterestPoints(
+            Guid patientId,
             [FromBody] InterestPointCreateDto interestPointDto
         )
         {
-            var result = await _interestPointsService.CreateInterestPointsAsync(interestPointDto);
+            var result = await _interestPointsService.CreateInterestPointsAsync(
+                interestPointDto,
+                patientId
+            );
             if (result.Success)
             {
                 return Ok(result);

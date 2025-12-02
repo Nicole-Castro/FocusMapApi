@@ -16,26 +16,21 @@ public class InterestPointsService : IInterestPointsService
     }
 
     public async Task<ResponseModel<string>> CreateInterestPointsAsync(
-        InterestPointCreateDto interestPointCreateDto
+        InterestPointCreateDto interestPointCreateDto,
+        Guid patientId
     )
     {
         try
         {
-            var list = new List<Models.InterestPoints>();
-
-            foreach (var name in interestPointCreateDto.name)
+            var point = new Models.InterestPoints
             {
-                var interestPoint = new Models.InterestPoints
-                {
-                    id = Guid.NewGuid(),
-                    name = name,
-                    patient_id = interestPointCreateDto.patient_id,
-                    is_deleted = false,
-                };
-                list.Add(interestPoint);
-            }
+                id = Guid.NewGuid(),
+                patient_id = patientId,
+                name = interestPointCreateDto.name,
+                is_deleted = false,
+            };
 
-            await _context.points_of_interest.AddRangeAsync(list);
+            await _context.points_of_interest.AddAsync(point);
             await _context.SaveChangesAsync();
 
             return new ResponseModel<string>

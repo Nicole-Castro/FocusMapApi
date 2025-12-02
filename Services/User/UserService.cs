@@ -320,4 +320,39 @@ public class UserService : IUserService
             };
         }
     }
+
+    public async Task<ResponseModel<object>> GetById(Guid id)
+    {
+        try
+        {
+            var user = await _context.patients.FirstOrDefaultAsync(a => a.id == id);
+            if (user == null)
+            {
+                return new ResponseModel<object>
+                {
+                    Success = false,
+                    Message = "Usuário nao encontrado",
+                    StatusCode = 404,
+                };
+            }
+
+            return new ResponseModel<object>
+            {
+                Success = true,
+                Message = "Usuário obtido com sucesso",
+                Data = user.name,
+                StatusCode = 200,
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ResponseModel<object>
+            {
+                Success = false,
+                Message = $"Erro ao obter usuário: {ex.Message}",
+                Data = null,
+                StatusCode = 500,
+            };
+        }
+    }
 }

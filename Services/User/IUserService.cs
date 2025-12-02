@@ -13,4 +13,6 @@ public interface IUserService
     Task<ResponseModel<List<ListPatientsDto>>> ListPatients(Guid id, string? searchTerm = null);
     Task<ResponseModel<object>> GoogleSignUp(GoogleAuthDto dto);
     Task<ResponseModel<object>> TotalPatients(Guid id);
+
+    Task<ResponseModel<object>> GetById(Guid id);
 }

@@ -118,5 +118,16 @@ namespace FocusMapApi.Controllers.User
 
             return Ok(result);
         }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetUserById(Guid id)
+        {
+            var result = await _user.GetById(id);
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }
