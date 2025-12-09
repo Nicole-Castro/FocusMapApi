@@ -92,7 +92,7 @@ builder.Services.AddScoped<ISessionDataService, SessionDataService>();
 builder.Services.AddScoped<IOpenAiService, OpenAiService>();
 builder.Services.AddScoped<IAudioDescriptionService, AudioDescriptionService>();
 
-var allowedOrigins =
+var AllowFrontend =
     builder
         .Configuration["Cors:AllowedOrigins"]
         ?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -104,7 +104,7 @@ builder.Services.AddCors(options =>
         "AllowFrontend",
         policy =>
         {
-            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+            policy.WithOrigins(AllowFrontend).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
         }
     );
 });

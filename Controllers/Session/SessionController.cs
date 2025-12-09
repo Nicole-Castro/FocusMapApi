@@ -29,6 +29,17 @@ namespace FocusMapApi.Controllers.Session
             return StatusCode(result.StatusCode, result);
         }
 
+        [HttpGet("{id}/dashboard")]
+        public async Task<IActionResult> GetSessionDashboard(Guid id)
+        {
+            var result = await _sessionService.getSessionDashboardAsync(id);
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return StatusCode(result.StatusCode, result);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetSessionById(Guid id)
         {
@@ -54,7 +65,7 @@ namespace FocusMapApi.Controllers.Session
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateSession(Guid id)
         {
-            var result = await _sessionService.UpdateSessionAsync( id);
+            var result = await _sessionService.UpdateSessionAsync(id);
             if (result.Success)
             {
                 return Ok(result);
@@ -62,10 +73,12 @@ namespace FocusMapApi.Controllers.Session
             return StatusCode(result.StatusCode, result);
         }
 
-        [HttpGet("professional/{id}")]
-        public async Task<IActionResult> GetSessionsByProfessionalId(Guid id)
+        [HttpGet("professional")]
+        public async Task<IActionResult> GetSessionsByProfessionalId()
         {
-            var result = await _sessionService.GetSessionsByProfessionalIdAsync(id);
+            var UserClaim = User.FindFirst("UserId")?.Value;
+            Guid.TryParse(UserClaim, out var userId);
+            var result = await _sessionService.GetSessionsByProfessionalIdAsync(userId);
             if (result.Success)
             {
                 return Ok(result);

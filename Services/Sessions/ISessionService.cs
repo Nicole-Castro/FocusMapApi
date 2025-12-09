@@ -11,4 +11,5 @@ public interface ISessionService
     Task<ResponseModel<SessionDto>> GetSessionByIdAsync(Guid id);
     Task<ResponseModel<List<SessionDto>>> GetSessionsByPatientIdAsync(Guid patientId);
     Task<ResponseModel<List<SessionDto>>> GetSessionsByProfessionalIdAsync(Guid professionalId);
+    Task<ResponseModel<SessionDashboardDto>> getSessionDashboardAsync(Guid id);
 }
