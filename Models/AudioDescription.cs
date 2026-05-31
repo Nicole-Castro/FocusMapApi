@@ -1,36 +1,41 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace FocusMapApi.Models;
 
-public class AudioDescription
+[Table("audio_description")]
+public class AudioDescriptionModel
 {
     [Key]
     [Column("id")]
-    public Guid id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; set; } = Guid.NewGuid();
 
     [Required]
     [Column("session_id")]
-    public Guid session_id { get; set; }
+    public Guid SessionId { get; set; }
 
     [Required]
     [Column("start_of_audio")]
-    public DateTime start_of_audio { get; set; }
+    public DateTime StartOfAudio { get; set; }
 
     [Required]
     [Column("end_of_audio")]
-    public DateTime end_of_audio { get; set; }
+    public DateTime EndOfAudio { get; set; }
 
+    [MaxLength(1000)]
     [Column("description")]
-    public string? description { get; set; }
+    public string? Description { get; set; }
 
     [Column("id_point_of_interest")]
-    public Guid? id_point_of_interest { get; set; }
+    public Guid? InterestPointId { get; set; }
 
-    [ForeignKey(nameof(session_id))]
-    public virtual Sessions? session { get; set; }
+    [ForeignKey(nameof(SessionId))]
+    [JsonIgnore]
+    public virtual SessionModel? Session { get; set; }
 
-    [ForeignKey(nameof(id_point_of_interest))]
-    public virtual InterestPoints? point_of_interest { get; set; }
+    [ForeignKey(nameof(InterestPointId))]
+    [JsonIgnore]
+    public virtual InterestPointModel? InterestPoint { get; set; }
 }

@@ -22,15 +22,15 @@ public class AudioDescriptionService : IAudioDescriptionService
     {
         try
         {
-            var audioDescription = new Models.AudioDescription
+            var audioDescription = new AudioDescriptionModel
             {
-                session_id = audioDescriptionCreateDto.session_id,
-                start_of_audio = audioDescriptionCreateDto.start_of_audio,
-                end_of_audio = audioDescriptionCreateDto.end_of_audio,
-                description = audioDescriptionCreateDto.description,
-                id_point_of_interest = audioDescriptionCreateDto.id_point_of_interest,
+                SessionId = audioDescriptionCreateDto.session_id,
+                StartOfAudio = audioDescriptionCreateDto.start_of_audio,
+                EndOfAudio = audioDescriptionCreateDto.end_of_audio,
+                Description = audioDescriptionCreateDto.description,
+                InterestPointId = audioDescriptionCreateDto.id_point_of_interest,
             };
-            _context.audio_description.Add(audioDescription);
+            _context.AudioDescriptions.Add(audioDescription);
             await _context.SaveChangesAsync();
             return new ResponseModel<string>
             {
@@ -48,13 +48,11 @@ public class AudioDescriptionService : IAudioDescriptionService
         }
     }
 
-    public async Task<ResponseModel<AudioDescriotionDto>> GetAudioDescriptionById(
-        Guid audioDescriptionId
-    )
+    public async Task<ResponseModel<AudioDescriotionDto>> GetAudioDescriptionById(Guid audioDescriptionId)
     {
         try
         {
-            var audioDescription = await _context.audio_description.FindAsync(audioDescriptionId);
+            var audioDescription = await _context.AudioDescriptions.FindAsync(audioDescriptionId);
 
             if (audioDescription == null)
             {
@@ -67,12 +65,12 @@ public class AudioDescriptionService : IAudioDescriptionService
 
             var audioDescriptionDto = new AudioDescriotionDto
             {
-                id = audioDescription.id,
-                session_id = audioDescription.session_id,
-                start_of_audio = audioDescription.start_of_audio,
-                end_of_audio = audioDescription.end_of_audio,
-                description = audioDescription.description,
-                id_point_of_interest = audioDescription.id_point_of_interest,
+                id = audioDescription.Id,
+                session_id = audioDescription.SessionId,
+                start_of_audio = audioDescription.StartOfAudio,
+                end_of_audio = audioDescription.EndOfAudio,
+                description = audioDescription.Description,
+                id_point_of_interest = audioDescription.InterestPointId,
             };
 
             return new ResponseModel<AudioDescriotionDto>
@@ -91,15 +89,12 @@ public class AudioDescriptionService : IAudioDescriptionService
         }
     }
 
-    public async Task<ResponseModel<AudioDescriotionDto>> GetAudioDescriptionBySessionId(
-        Guid sessionId
-    )
+    public async Task<ResponseModel<AudioDescriotionDto>> GetAudioDescriptionBySessionId(Guid sessionId)
     {
         try
         {
-            var audioDescription = await _context.audio_description.FirstOrDefaultAsync(ad =>
-                ad.session_id == sessionId
-            );
+            var audioDescription = await _context.AudioDescriptions
+                .FirstOrDefaultAsync(ad => ad.SessionId == sessionId);
 
             if (audioDescription == null)
             {
@@ -112,12 +107,12 @@ public class AudioDescriptionService : IAudioDescriptionService
 
             var audioDescriptionDto = new AudioDescriotionDto
             {
-                id = audioDescription.id,
-                session_id = audioDescription.session_id,
-                start_of_audio = audioDescription.start_of_audio,
-                end_of_audio = audioDescription.end_of_audio,
-                description = audioDescription.description,
-                id_point_of_interest = audioDescription.id_point_of_interest,
+                id = audioDescription.Id,
+                session_id = audioDescription.SessionId,
+                start_of_audio = audioDescription.StartOfAudio,
+                end_of_audio = audioDescription.EndOfAudio,
+                description = audioDescription.Description,
+                id_point_of_interest = audioDescription.InterestPointId,
             };
 
             return new ResponseModel<AudioDescriotionDto>

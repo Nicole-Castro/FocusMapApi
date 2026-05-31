@@ -20,14 +20,14 @@ public class SessionService : ISessionService
     {
         try
         {
-            var session = new Models.Sessions
+            var session = new SessionModel
             {
                 PatientId = sessionCreateDto.patient_id,
                 SessionStartTime = DateTime.UtcNow,
                 SessionName = "session-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss"),
             };
 
-            await _context.sessions.AddAsync(session);
+            await _context.Sessions.AddAsync(session);
             await _context.SaveChangesAsync();
 
             return new ResponseModel<string>
@@ -53,8 +53,8 @@ public class SessionService : ISessionService
     {
         try
         {
-            var session = await _context
-                .sessions.Include(s => s.Patient)
+            var session = await _context.Sessions
+                .Include(s => s.Patient)
                 .Where(s => s.Id == id)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
@@ -70,17 +70,14 @@ public class SessionService : ISessionService
                 };
             }
 
-            // calcula duração
             string? formattedDuration = null;
 
             if (session.SessionEndTime.HasValue)
             {
                 var duration = session.SessionEndTime.Value - session.SessionStartTime;
 
-                // FORMATO BONITO: "1h 23m 45s"
                 if (duration.TotalHours >= 1)
-                    formattedDuration =
-                        $"{(int)duration.TotalHours}h {duration.Minutes}m {duration.Seconds}s";
+                    formattedDuration = $"{(int)duration.TotalHours}h {duration.Minutes}m {duration.Seconds}s";
                 else if (duration.TotalMinutes >= 1)
                     formattedDuration = $"{duration.Minutes}m {duration.Seconds}s";
                 else
@@ -93,9 +90,9 @@ public class SessionService : ISessionService
                 patient_id = session.PatientId,
                 session_start_time = session.SessionStartTime,
                 session_end_time = session.SessionEndTime,
-                session_duration = formattedDuration, // <<< agora é string formatada
+                session_duration = formattedDuration,
                 session_name = session.SessionName,
-                patient_name = session.Patient.name,
+                patient_name = session.Patient.Name,
             };
 
             return new ResponseModel<SessionDto>
@@ -122,8 +119,8 @@ public class SessionService : ISessionService
     {
         try
         {
-            var session = await _context
-                .sessions.Include(s => s.Patient)
+            var session = await _context.Sessions
+                .Include(s => s.Patient)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (session == null)
@@ -137,12 +134,12 @@ public class SessionService : ISessionService
                 };
             }
 
-            var sessionData = await _context
-                .session_data.Where(sd => sd.session_id == id)
+            var sessionData = await _context.SessionData
+                .Where(sd => sd.SessionId == id)
                 .ToListAsync();
 
-            var audioData = await _context
-                .audio_description.Where(ad => ad.session_id == id)
+            var audioData = await _context.AudioDescriptions
+                .Where(ad => ad.SessionId == id)
                 .ToListAsync();
 
             var sessionDashboardDto = new SessionDashboardDto
@@ -150,31 +147,31 @@ public class SessionService : ISessionService
                 AudioTopics = audioData
                     .Select(ad => new AudioTopicDto
                     {
-                        Id = ad.id,
-                        StartOfAudio = ad.start_of_audio,
-                        EndOfAudio = ad.end_of_audio,
-                        Description = ad.description,
-                        PointOfInterestId = ad.id_point_of_interest,
+                        Id = ad.Id,
+                        StartOfAudio = ad.StartOfAudio,
+                        EndOfAudio = ad.EndOfAudio,
+                        Description = ad.Description,
+                        PointOfInterestId = ad.InterestPointId,
                     })
                     .ToList(),
 
                 Eeg = sessionData
                     .Select(sd => new EegDataDto
                     {
-                        AttentionValue = sd.attention_value,
-                        DeltaPower = sd.delta_power,
-                        HighAlphaPower = sd.high_alpha_power,
-                        HighBetaPower = sd.high_beta_power,
-                        LowAlphaPower = sd.low_alpha_power,
-                        LowBetaPower = sd.low_beta_power,
-                        LowGammaPower = sd.low_gamma_power,
-                        MeditationValue = sd.meditation_value,
-                        MiddleGammaPower = sd.middle_gamma_power,
-                        RawEegValue = sd.raw_eeg_value,
-                        ThetaPower = sd.theta_power,
-                        Timestamp = sd.timestamp_of_record,
-                        Latitude = sd.latitude,
-                        Longitude = sd.longitude,
+                        AttentionValue = sd.AttentionValue,
+                        DeltaPower = sd.DeltaPower,
+                        HighAlphaPower = sd.HighAlphaPower,
+                        HighBetaPower = sd.HighBetaPower,
+                        LowAlphaPower = sd.LowAlphaPower,
+                        LowBetaPower = sd.LowBetaPower,
+                        LowGammaPower = sd.LowGammaPower,
+                        MeditationValue = sd.MeditationValue,
+                        MiddleGammaPower = sd.MiddleGammaPower,
+                        RawEegValue = sd.RawEegValue,
+                        ThetaPower = sd.ThetaPower,
+                        Timestamp = sd.TimestampOfRecord,
+                        Latitude = sd.Latitude,
+                        Longitude = sd.Longitude,
                     })
                     .ToList(),
 
@@ -185,7 +182,7 @@ public class SessionService : ISessionService
                     session_start_time = session.SessionStartTime,
                     session_end_time = session.SessionEndTime,
                     session_name = session.SessionName,
-                    patient_name = session.Patient?.name,
+                    patient_name = session.Patient?.Name,
                 },
             };
 
@@ -213,8 +210,8 @@ public class SessionService : ISessionService
     {
         try
         {
-            var sessions = await _context
-                .sessions.AsNoTracking()
+            var sessions = await _context.Sessions
+                .AsNoTracking()
                 .Where(s => s.PatientId == patientId)
                 .Select(s => new SessionDto
                 {
@@ -246,16 +243,14 @@ public class SessionService : ISessionService
         }
     }
 
-    public async Task<ResponseModel<List<SessionDto>>> GetSessionsByProfessionalIdAsync(
-        Guid professionalId
-    )
+    public async Task<ResponseModel<List<SessionDto>>> GetSessionsByProfessionalIdAsync(Guid professionalId)
     {
         try
         {
-            var sessions = await _context
-                .sessions.AsNoTracking()
+            var sessions = await _context.Sessions
+                .AsNoTracking()
                 .Include(s => s.Patient)
-                .Where(s => s.Patient.professional_id == professionalId)
+                .Where(s => s.Patient.ProfessionalId == professionalId)
                 .Select(s => new SessionDto
                 {
                     id = s.Id,
@@ -263,7 +258,7 @@ public class SessionService : ISessionService
                     session_start_time = s.SessionStartTime,
                     session_end_time = s.SessionEndTime,
                     session_name = s.SessionName,
-                    patient_name = s.Patient.name,
+                    patient_name = s.Patient.Name,
                 })
                 .ToListAsync();
 
@@ -291,7 +286,7 @@ public class SessionService : ISessionService
     {
         try
         {
-            var session = await _context.sessions.FindAsync(id);
+            var session = await _context.Sessions.FindAsync(id);
             if (session == null)
             {
                 return new ResponseModel<string>
@@ -303,7 +298,7 @@ public class SessionService : ISessionService
             }
 
             session.SessionEndTime = DateTime.UtcNow;
-            _context.sessions.Update(session);
+            _context.Sessions.Update(session);
             await _context.SaveChangesAsync();
 
             return new ResponseModel<string>

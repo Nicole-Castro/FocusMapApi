@@ -1,4 +1,3 @@
-using System;
 using FocusMapApi.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,13 +5,34 @@ namespace FocusMapApi.Data;
 
 public class AppDbContext : DbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options)
-        : base(options) { }
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-    public DbSet<UsersModel> professionals { get; set; }
-    public DbSet<PatientModel> patients { get; set; }
-    public DbSet<InterestPoints> points_of_interest { get; set; }
-    public DbSet<Sessions> sessions { get; set; }
-    public DbSet<SessionData> session_data { get; set; }
-    public DbSet<AudioDescription> audio_description { get; set; }
+    public DbSet<UserModel> Profiles { get; set; }
+    public DbSet<SessionModel> Sessions { get; set; }
+    public DbSet<SessionDataModel> SessionData { get; set; }
+    public DbSet<InterestPointModel> InterestPoints { get; set; }
+    public DbSet<AudioDescriptionModel> AudioDescriptions { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Converte o enum UserRole para string no banco (coluna "role" é varchar)
+        modelBuilder.Entity<UserModel>()
+            .Property(u => u.Role)
+            .HasConversion<string>();
+
+        // Self-referencing: paciente → profissional
+        modelBuilder.Entity<UserModel>()
+            .HasOne(u => u.Professional)
+            .WithMany(u => u.Patients)
+            .HasForeignKey(u => u.ProfessionalId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Índice composto para queries de EEG por sessão + tempo
+        modelBuilder.Entity<SessionDataModel>()
+            .HasIndex(s => new { s.SessionId, s.TimestampOfRecord });
+
+        // Soft delete global — EF ignora registros deletados por padrão
+        modelBuilder.Entity<UserModel>().HasQueryFilter(u => !u.IsDeleted);
+        modelBuilder.Entity<InterestPointModel>().HasQueryFilter(i => !i.IsDeleted);
+    }
 }

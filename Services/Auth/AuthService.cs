@@ -5,7 +5,6 @@ using System.Text;
 using FocusMapApi.Data;
 using FocusMapApi.DTO.User;
 using FocusMapApi.Models;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -32,33 +31,15 @@ public class AuthService : IAuthInterface
                 StatusCode = 400,
             };
 
-        var email = loginDto.email.ToLower();
+        var user = await _context.Profiles
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == loginDto.email.ToLower());
 
-        var patient = await _context.patients.FirstOrDefaultAsync(u => u.email.ToLower() == email);
-
-        var professional =
-            patient == null
-                ? await _context.professionals.FirstOrDefaultAsync(u => u.email.ToLower() == email)
-                : null;
-
-        if (patient == null && professional == null)
+        if (user == null)
             return new ResponseModel<object>
             {
                 Success = false,
                 Message = "Usuário não encontrado.",
                 StatusCode = 404,
-            };
-
-        var user = (object)patient ?? professional;
-
-        string storedPassword = patient?.password ?? professional?.password;
-
-        if (!BCrypt.Net.BCrypt.Verify(loginDto.password, storedPassword))
-            return new ResponseModel<object>
-            {
-                Success = false,
-                Message = "Senha incorreta.",
-                StatusCode = 401,
             };
 
         var jwt = GenerateJwtToken(user);
@@ -68,48 +49,27 @@ public class AuthService : IAuthInterface
             Success = true,
             Data = new
             {
-                id = patient?.id ?? professional?.id,
+                id = user.Id,
                 token = jwt,
-                name = patient?.name ?? professional?.name,
-                email = patient?.email ?? professional?.email,
-                type = patient != null ? "patient" : "professional",
+                name = user.Name,
+                email = user.Email,
+                role = user.Role.ToString(),
             },
             Message = "Usuário logado com sucesso.",
             StatusCode = 200,
         };
     }
 
-    public string GenerateJwtToken(object user)
+    public string GenerateJwtToken(object userObj)
     {
-        string userId = string.Empty;
-        string email = string.Empty;
-        string userType = string.Empty;
+        if (userObj is not UserModel user)
+            throw new ArgumentException("Tipo de usuário inválido ao gerar o token.");
 
-        // Detecta o tipo do usuário
-        switch (user)
-        {
-            case PatientModel patient:
-                userId = patient.id.ToString() ?? "";
-                email = patient.email;
-                userType = "patient";
-                break;
-
-            case UsersModel professional:
-                userId = professional.id.ToString() ?? "";
-                email = professional.email;
-                userType = "professional";
-                break;
-
-            default:
-                throw new ArgumentException("Tipo de usuário inválido ao gerar o token.");
-        }
-
-        // Cria as claims
         var claims = new List<Claim>
         {
-            new Claim("UserId", userId),
-            new Claim(ClaimTypes.Email, email),
-            new Claim("UserType", userType),
+            new Claim("UserId", user.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim("UserRole", user.Role.ToString()),
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
@@ -128,16 +88,17 @@ public class AuthService : IAuthInterface
 
     public async Task<ResponseModel<object>> GoogleLogin(GoogleLoginDto dto)
     {
-        var user = await _context.professionals.FirstOrDefaultAsync(x => x.email == dto.Email);
+        var user = await _context.Profiles.FirstOrDefaultAsync(x => x.Email == dto.Email);
         if (user == null)
         {
-            return new ResponseModel<object>()
+            return new ResponseModel<object>
             {
                 Success = false,
                 Message = "Usuário não encontrado. Por favor, faça o cadastro.",
                 StatusCode = 404,
             };
         }
+
         var token = GenerateJwtToken(user);
 
         return new ResponseModel<object>
@@ -145,7 +106,7 @@ public class AuthService : IAuthInterface
             Success = true,
             Message = "Autenticado via Google",
             StatusCode = 200,
-            Data = new { token, user.id },
+            Data = new { token, id = user.Id },
         };
     }
 }

@@ -52,5 +52,16 @@ namespace FocusMapApi.Controllers.SessionData
             }
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpGet("progress/{patientId:guid}")]
+        public async Task<IActionResult> GetPatientProgress(Guid patientId)
+        {
+            var result = await _sessionDataService.GetPatientProgress(patientId);
+
+            if (result.Success)
+                return Ok(result);
+
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }

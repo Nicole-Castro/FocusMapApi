@@ -44,32 +44,18 @@ namespace FocusMapApi.Controllers.Auth
             if (!Guid.TryParse(userIdStr, out Guid userId))
                 return Unauthorized(new { Message = "Token inválido." });
 
-            var patient = _context.patients.FirstOrDefault(x => x.id == userId);
-            var professional = _context.professionals.FirstOrDefault(x => x.id == userId);
+            var user = _context.Profiles.FirstOrDefault(x => x.Id == userId);
 
-            if (patient != null)
-                return Ok(
-                    new
-                    {
-                        patient.id,
-                        patient.name,
-                        patient.email,
-                        type,
-                    }
-                );
+            if (user == null)
+                return NotFound(new { Message = "Usuário não encontrado." });
 
-            if (professional != null)
-                return Ok(
-                    new
-                    {
-                        professional.id,
-                        professional.name,
-                        professional.email,
-                        type,
-                    }
-                );
-
-            return NotFound(new { Message = "Usuário não encontrado." });
+            return Ok(new
+            {
+                id = user.Id,
+                name = user.Name,
+                email = user.Email,
+                role = user.Role.ToString(),
+            });
         }
 
         [HttpPost("GoogleLogin")]

@@ -26,45 +26,43 @@ public class UserService : IUserService
         try
         {
             if (user == null)
-            {
                 return new ResponseModel<object>
                 {
                     Success = false,
                     Message = "DTO chegou nulo — o JSON não está sendo mapeado.",
                     StatusCode = 400,
                 };
-            }
-            var getUsers = await _context.professionals.FirstOrDefaultAsync(u =>
-                u.email == user.Email
-            );
 
-            if (getUsers != null)
-            {
+            var exists = await _context.Profiles.AnyAsync(u => u.Email == user.Email);
+            if (exists)
                 return new ResponseModel<object>
                 {
                     Success = false,
                     Message = "Email já cadastrado",
                     StatusCode = 400,
                 };
-            }
 
-            var u = new UsersModel
+            // O ID deve vir do Supabase Auth (auth.users.id).
+            // Se ainda não integrado, gera um novo Guid provisoriamente.
+            var newUser = new UserModel
             {
-                id = Guid.NewGuid(),
-                email = user.Email,
-                name = user.Name,
-                password = BCrypt.Net.BCrypt.HashPassword(user.Password),
+                Id = Guid.NewGuid(),
+                Email = user.Email,
+                Name = user.Name,
+                Role = UserRole.Professional,
             };
 
-            _context.professionals.Add(u);
+            _context.Profiles.Add(newUser);
             await _context.SaveChangesAsync();
-            string token = _authService.GenerateJwtToken(u);
+
+            string token = _authService.GenerateJwtToken(newUser);
+
             return new ResponseModel<object>
             {
                 Success = true,
                 Message = "Usuário cadastrado com sucesso",
                 StatusCode = 200,
-                Data = new { id = u.id, token = token },
+                Data = new { id = newUser.Id, token },
             };
         }
         catch (Exception ex)
@@ -78,16 +76,13 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<ResponseModel<string>> CreateUserPatient(
-        CreatePatientDto patient,
-        Guid userId
-    )
+    public async Task<ResponseModel<string>> CreateUserPatient(CreatePatientDto patient, Guid professionalId)
     {
         try
         {
-            var exists = await _context
-                .patients.AsNoTracking()
-                .AnyAsync(u => u.email.ToLower() == patient.email.ToLower());
+            var exists = await _context.Profiles
+                .AsNoTracking()
+                .AnyAsync(u => u.Email.ToLower() == patient.email.ToLower());
 
             if (exists)
                 return new ResponseModel<string>
@@ -97,22 +92,22 @@ public class UserService : IUserService
                     StatusCode = 400,
                 };
 
-            var u = new PatientModel
+            var newPatient = new UserModel
             {
-                id = Guid.NewGuid(),
-                email = patient.email,
-                name = patient.name,
-                password = BCrypt.Net.BCrypt.HashPassword(patient.password),
-                professional_id = userId,
+                Id = Guid.NewGuid(),
+                Email = patient.email,
+                Name = patient.name,
+                Role = UserRole.Patient,
+                ProfessionalId = professionalId,
             };
 
-            _context.patients.Add(u);
+            _context.Profiles.Add(newPatient);
             await _context.SaveChangesAsync();
 
             return new ResponseModel<string>
             {
                 Success = true,
-                Message = "Usuário Cadastrado com sucesso",
+                Message = "Usuário cadastrado com sucesso",
                 StatusCode = 200,
             };
         }
@@ -137,28 +132,22 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<ResponseModel<List<ListPatientsDto>>> ListPatients(
-        Guid id,
-        string? searchTerm = null
-    )
+    public async Task<ResponseModel<List<ListPatientsDto>>> ListPatients(Guid professionalId, string? searchTerm = null)
     {
         try
         {
-            var query = _context.patients.Where(p => p.professional_id == id);
+            var query = _context.Profiles
+                .Where(p => p.Role == UserRole.Patient && p.ProfessionalId == professionalId);
 
-            // Se houver termo de busca, filtra no banco
             if (!string.IsNullOrEmpty(searchTerm))
-            {
-                query = query.Where(p => p.name.ToLower().Contains(searchTerm.ToLower()));
-            }
+                query = query.Where(p => p.Name.ToLower().Contains(searchTerm.ToLower()));
 
-            // Só agora materializa
             var patients = await query
                 .Select(p => new ListPatientsDto
                 {
-                    id = p.id,
-                    name = p.name,
-                    email = p.email,
+                    id = p.Id,
+                    name = p.Name,
+                    email = p.Email,
                 })
                 .ToListAsync();
 
@@ -186,23 +175,22 @@ public class UserService : IUserService
     {
         var payload = await GoogleJsonWebSignature.ValidateAsync(dto.Token);
 
-        var existingUser = await _context.professionals.FirstOrDefaultAsync(u =>
-            u.email == payload.Email
-        );
+        var existingUser = await _context.Profiles
+            .FirstOrDefaultAsync(u => u.Email == payload.Email);
 
-        UsersModel user;
+        UserModel user;
 
         if (existingUser == null)
         {
-            user = new UsersModel
+            user = new UserModel
             {
-                id = Guid.NewGuid(),
-                email = payload.Email,
-                name = payload.Name,
-                password = null,
+                Id = Guid.NewGuid(),
+                Email = payload.Email,
+                Name = payload.Name,
+                Role = UserRole.Professional,
             };
 
-            _context.professionals.Add(user);
+            _context.Profiles.Add(user);
             await _context.SaveChangesAsync();
         }
         else
@@ -217,29 +205,29 @@ public class UserService : IUserService
             Success = true,
             Message = "Autenticado via Google",
             StatusCode = 200,
-            Data = new { token, user.id },
+            Data = new { token, id = user.Id },
         };
     }
 
-    public async Task<ResponseModel<string>> UpdateUser(UpdateUserDto user, Guid id)
+    public async Task<ResponseModel<string>> UpdateUser(UpdateUserDto dto, Guid id)
     {
         try
         {
-            var getUser = await _context.professionals.FirstOrDefaultAsync(a => a.id == id);
-            if (getUser == null)
-            {
+            var user = await _context.Profiles.FirstOrDefaultAsync(a => a.Id == id);
+            if (user == null)
                 return new ResponseModel<string>
                 {
                     Success = false,
                     Message = "Usuário não encontrado",
                     StatusCode = 404,
                 };
-            }
-            getUser.name = user.name ?? getUser.name;
-            getUser.password = BCrypt.Net.BCrypt.HashPassword(user.password) ?? getUser.password;
 
-            _context.professionals.Update(getUser);
+            user.Name = dto.name ?? user.Name;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _context.Profiles.Update(user);
             await _context.SaveChangesAsync();
+
             return new ResponseModel<string>
             {
                 Success = true,
@@ -258,25 +246,27 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<ResponseModel<string>> UpdateUserPatient(UpdateUserDto patient, Guid id)
+    public async Task<ResponseModel<string>> UpdateUserPatient(UpdateUserDto dto, Guid id)
     {
         try
         {
-            var getUser = await _context.patients.FirstOrDefaultAsync(a => a.id == id);
-            if (getUser == null)
-            {
+            var patient = await _context.Profiles
+                .FirstOrDefaultAsync(a => a.Id == id && a.Role == UserRole.Patient);
+
+            if (patient == null)
                 return new ResponseModel<string>
                 {
                     Success = false,
                     Message = "Usuário não encontrado",
                     StatusCode = 404,
                 };
-            }
-            getUser.name = patient.name ?? getUser.name;
-            getUser.password = BCrypt.Net.BCrypt.HashPassword(patient.password) ?? getUser.password;
 
-            _context.patients.Update(getUser);
+            patient.Name = dto.name ?? patient.Name;
+            patient.UpdatedAt = DateTime.UtcNow;
+
+            _context.Profiles.Update(patient);
             await _context.SaveChangesAsync();
+
             return new ResponseModel<string>
             {
                 Success = true,
@@ -295,11 +285,12 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<ResponseModel<object>> TotalPatients(Guid id)
+    public async Task<ResponseModel<object>> TotalPatients(Guid professionalId)
     {
         try
         {
-            var total = await _context.patients.CountAsync(p => p.professional_id == id);
+            var total = await _context.Profiles.CountAsync(p =>
+                p.Role == UserRole.Patient && p.ProfessionalId == professionalId);
 
             return new ResponseModel<object>
             {
@@ -325,22 +316,20 @@ public class UserService : IUserService
     {
         try
         {
-            var user = await _context.patients.FirstOrDefaultAsync(a => a.id == id);
+            var user = await _context.Profiles.FirstOrDefaultAsync(a => a.Id == id);
             if (user == null)
-            {
                 return new ResponseModel<object>
                 {
                     Success = false,
-                    Message = "Usuário nao encontrado",
+                    Message = "Usuário não encontrado",
                     StatusCode = 404,
                 };
-            }
 
             return new ResponseModel<object>
             {
                 Success = true,
                 Message = "Usuário obtido com sucesso",
-                Data = user.name,
+                Data = user.Name,
                 StatusCode = 200,
             };
         }

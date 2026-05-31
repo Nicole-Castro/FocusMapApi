@@ -4,7 +4,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FocusMapApi.Models;
 
-public class Sessions
+[Table("sessions")]
+public class SessionModel
 {
     [Key]
     [Column("id")]
@@ -27,5 +28,5 @@ public class Sessions
     public string? SessionName { get; set; }
 
     [ForeignKey(nameof(PatientId))]
-    public virtual PatientModel? Patient { get; set; }
+    public virtual UserModel? Patient { get; set; }
 }

@@ -22,15 +22,15 @@ public class InterestPointsService : IInterestPointsService
     {
         try
         {
-            var point = new Models.InterestPoints
+            var point = new InterestPointModel
             {
-                id = Guid.NewGuid(),
-                patient_id = patientId,
-                name = interestPointCreateDto.name,
-                is_deleted = false,
+                Id = Guid.NewGuid(),
+                PatientId = patientId,
+                Name = interestPointCreateDto.name,
+                IsDeleted = false,
             };
 
-            await _context.points_of_interest.AddAsync(point);
+            await _context.InterestPoints.AddAsync(point);
             await _context.SaveChangesAsync();
 
             return new ResponseModel<string>
@@ -55,7 +55,7 @@ public class InterestPointsService : IInterestPointsService
     {
         try
         {
-            var interestPoint = await _context.points_of_interest.FindAsync(id);
+            var interestPoint = await _context.InterestPoints.FindAsync(id);
             if (interestPoint == null)
             {
                 return new ResponseModel<string>
@@ -66,8 +66,8 @@ public class InterestPointsService : IInterestPointsService
                 };
             }
 
-            interestPoint.is_deleted = true;
-            _context.points_of_interest.Update(interestPoint);
+            interestPoint.IsDeleted = true;
+            _context.InterestPoints.Update(interestPoint);
             await _context.SaveChangesAsync();
 
             return new ResponseModel<string>
@@ -92,26 +92,19 @@ public class InterestPointsService : IInterestPointsService
     {
         try
         {
-            var interestPoint = await _context.points_of_interest.FindAsync(id);
-            if (interestPoint == null || interestPoint.is_deleted)
+            var interestPoint = await _context.InterestPoints.FindAsync(id);
+            if (interestPoint == null || interestPoint.IsDeleted)
             {
-                return ResponseModel<InterestPointDto>.Fail(
-                    "Ponto de interesse não encontrado",
-                    404
-                );
+                return ResponseModel<InterestPointDto>.Fail("Ponto de interesse não encontrado", 404);
             }
 
             var interestPointDto = new InterestPointDto
             {
-                id = interestPoint.id,
-                name = interestPoint.name,
+                id = interestPoint.Id,
+                name = interestPoint.Name,
             };
 
-            return ResponseModel<InterestPointDto>.Ok(
-                interestPointDto,
-                "Ponto de interesse encontrado",
-                200
-            );
+            return ResponseModel<InterestPointDto>.Ok(interestPointDto, "Ponto de interesse encontrado", 200);
         }
         catch (Exception)
         {
@@ -119,37 +112,28 @@ public class InterestPointsService : IInterestPointsService
         }
     }
 
-    public async Task<ResponseModel<List<InterestPointDto>>> GetInterestPointsByPatientIdAsync(
-        Guid patientId
-    )
+    public async Task<ResponseModel<List<InterestPointDto>>> GetInterestPointsByPatientIdAsync(Guid patientId)
     {
         try
         {
-            var interestPoints = await _context
-                .points_of_interest.Where(ip => ip.patient_id == patientId && !ip.is_deleted)
+            var interestPoints = await _context.InterestPoints
+                .Where(ip => ip.PatientId == patientId && !ip.IsDeleted)
                 .AsNoTracking()
                 .ToListAsync();
 
             var interestPointDtos = interestPoints
-                .Select(interestPoint => new InterestPointDto
+                .Select(ip => new InterestPointDto
                 {
-                    id = interestPoint.id,
-                    name = interestPoint.name,
+                    id = ip.Id,
+                    name = ip.Name,
                 })
                 .ToList();
 
-            return ResponseModel<List<InterestPointDto>>.Ok(
-                interestPointDtos,
-                "Pontos de interesse encontrados",
-                200
-            );
+            return ResponseModel<List<InterestPointDto>>.Ok(interestPointDtos, "Pontos de interesse encontrados", 200);
         }
         catch (Exception)
         {
-            return ResponseModel<List<InterestPointDto>>.Fail(
-                "Erro ao buscar pontos de interesse",
-                500
-            );
+            return ResponseModel<List<InterestPointDto>>.Fail("Erro ao buscar pontos de interesse", 500);
         }
     }
 
@@ -160,7 +144,7 @@ public class InterestPointsService : IInterestPointsService
     {
         try
         {
-            var interestPoint = await _context.points_of_interest.FindAsync(id);
+            var interestPoint = await _context.InterestPoints.FindAsync(id);
             if (interestPoint == null)
             {
                 return new ResponseModel<string>
@@ -171,8 +155,8 @@ public class InterestPointsService : IInterestPointsService
                 };
             }
 
-            interestPoint.name = interestPointUpdateDto.name ?? interestPoint.name;
-            _context.points_of_interest.Update(interestPoint);
+            interestPoint.Name = interestPointUpdateDto.name ?? interestPoint.Name;
+            _context.InterestPoints.Update(interestPoint);
             await _context.SaveChangesAsync();
 
             return new ResponseModel<string>
