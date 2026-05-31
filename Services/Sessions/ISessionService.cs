@@ -10,6 +10,14 @@ public interface ISessionService
     Task<ResponseModel<string>> UpdateSessionAsync(Guid id);
     Task<ResponseModel<SessionDto>> GetSessionByIdAsync(Guid id);
     Task<ResponseModel<List<SessionDto>>> GetSessionsByPatientIdAsync(Guid patientId);
-    Task<ResponseModel<List<SessionDto>>> GetSessionsByProfessionalIdAsync(Guid professionalId);
+    Task<ResponseModel<SessionPagedDto>> GetSessionsByProfessionalIdAsync(
+        Guid professionalId,
+        int page,
+        int pageSize,
+        string? status,
+        Guid? patientId,
+        DateTime? dateFrom,
+        DateTime? dateTo
+    );
     Task<ResponseModel<SessionDashboardDto>> getSessionDashboardAsync(Guid id);
 }

@@ -74,11 +74,18 @@ namespace FocusMapApi.Controllers.Session
         }
 
         [HttpGet("professional")]
-        public async Task<IActionResult> GetSessionsByProfessionalId()
+        public async Task<IActionResult> GetSessionsByProfessionalId(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? status = null,
+            [FromQuery] Guid? patientId = null,
+            [FromQuery] DateTime? dateFrom = null,
+            [FromQuery] DateTime? dateTo = null)
         {
             var UserClaim = User.FindFirst("UserId")?.Value;
             Guid.TryParse(UserClaim, out var userId);
-            var result = await _sessionService.GetSessionsByProfessionalIdAsync(userId);
+            var result = await _sessionService.GetSessionsByProfessionalIdAsync(
+                userId, page, pageSize, status, patientId, dateFrom, dateTo);
             if (result.Success)
             {
                 return Ok(result);

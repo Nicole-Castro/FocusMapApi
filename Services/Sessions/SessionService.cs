@@ -243,14 +243,59 @@ public class SessionService : ISessionService
         }
     }
 
-    public async Task<ResponseModel<List<SessionDto>>> GetSessionsByProfessionalIdAsync(Guid professionalId)
+    public async Task<ResponseModel<SessionPagedDto>> GetSessionsByProfessionalIdAsync(
+        Guid professionalId,
+        int page,
+        int pageSize,
+        string? status,
+        Guid? patientId,
+        DateTime? dateFrom,
+        DateTime? dateTo)
     {
         try
         {
-            var sessions = await _context.Sessions
+            // Query base sem Include — usada para counts (EF ignora Include em COUNT)
+            var baseQuery = _context.Sessions
                 .AsNoTracking()
+                .IgnoreQueryFilters()
+                .Where(s => s.Patient != null && s.Patient.ProfessionalId == professionalId && !s.Patient.IsDeleted);
+
+            // Aplica filtros de paciente e data na base (sem filtro de status)
+            if (patientId.HasValue)
+                baseQuery = baseQuery.Where(s => s.PatientId == patientId.Value);
+            if (dateFrom.HasValue)
+            {
+                var from = DateTime.SpecifyKind(dateFrom.Value.Date, DateTimeKind.Utc);
+                baseQuery = baseQuery.Where(s => s.SessionStartTime >= from);
+            }
+            if (dateTo.HasValue)
+            {
+                var to = DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc);
+                baseQuery = baseQuery.Where(s => s.SessionStartTime < to);
+            }
+
+            // Totais agregados independem do filtro de status
+            var totalFinished   = await baseQuery.CountAsync(s => s.SessionEndTime != null);
+            var totalInProgress = await baseQuery.CountAsync(s => s.SessionEndTime == null);
+            var totalCount      = totalFinished + totalInProgress;
+
+            // Query para itens — aplica também filtro de status
+            var query = baseQuery;
+            if (status == "finished")
+                query = query.Where(s => s.SessionEndTime != null);
+            else if (status == "in_progress")
+                query = query.Where(s => s.SessionEndTime == null);
+
+            var filteredCount = (status == "finished") ? totalFinished
+                              : (status == "in_progress") ? totalInProgress
+                              : totalCount;
+            var totalPages = (int)Math.Ceiling(filteredCount / (double)pageSize);
+
+            var items = await query
                 .Include(s => s.Patient)
-                .Where(s => s.Patient.ProfessionalId == professionalId)
+                .OrderByDescending(s => s.SessionStartTime)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(s => new SessionDto
                 {
                     id = s.Id,
@@ -262,17 +307,26 @@ public class SessionService : ISessionService
                 })
                 .ToListAsync();
 
-            return new ResponseModel<List<SessionDto>>
+            return new ResponseModel<SessionPagedDto>
             {
                 Success = true,
                 Message = "Sessions retrieved successfully",
                 StatusCode = 200,
-                Data = sessions,
+                Data = new SessionPagedDto
+                {
+                    Items = items,
+                    TotalCount = filteredCount,
+                    TotalFinished = totalFinished,
+                    TotalInProgress = totalInProgress,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = totalPages,
+                },
             };
         }
         catch (Exception ex)
         {
-            return new ResponseModel<List<SessionDto>>
+            return new ResponseModel<SessionPagedDto>
             {
                 Success = false,
                 Message = $"Error retrieving sessions: {ex.Message}",
