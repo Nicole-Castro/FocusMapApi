@@ -312,6 +312,37 @@ public class UserService : IUserService
         }
     }
 
+    public async Task<ResponseModel<string>> DeletePatient(Guid patientId, Guid professionalId)
+    {
+        try
+        {
+            var patient = await _context.Profiles.FirstOrDefaultAsync(p =>
+                p.Id == patientId
+                && p.ProfessionalId == professionalId
+                && p.Role == UserRole.Patient
+                && !p.IsDeleted
+            );
+
+            if (patient == null)
+                return ResponseModel<string>.Fail("Paciente não encontrado", 404);
+
+            patient.IsDeleted = true;
+            patient.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return new ResponseModel<string>
+            {
+                Success = true,
+                Message = "Paciente excluído com sucesso",
+                StatusCode = 200,
+            };
+        }
+        catch (Exception ex)
+        {
+            return ResponseModel<string>.Fail($"Erro ao excluir paciente: {ex.Message}", 500);
+        }
+    }
+
     public async Task<ResponseModel<object>> GetById(Guid id)
     {
         try

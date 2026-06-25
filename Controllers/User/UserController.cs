@@ -119,6 +119,17 @@ namespace FocusMapApi.Controllers.User
             return Ok(result);
         }
 
+        [HttpDelete("DeletePatient/{id}")]
+        public async Task<IActionResult> DeletePatient(Guid id)
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            Guid.TryParse(userIdClaim, out var userId);
+            var result = await _user.DeletePatient(id, userId);
+            if (result == null)
+                return StatusCode(500, "Erro ao excluir paciente.");
+            return Ok(result);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(Guid id)
         {

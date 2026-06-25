@@ -15,4 +15,5 @@ public interface IUserService
     Task<ResponseModel<object>> TotalPatients(Guid id);
 
     Task<ResponseModel<object>> GetById(Guid id);
+    Task<ResponseModel<string>> DeletePatient(Guid patientId, Guid professionalId);
 }
