@@ -1,8 +1,10 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FocusMapApi", "FocusMapApi.csproj", "{C926321A-EA1E-BFA1-BC2F-0156085F082F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FocusMapApi.Tests", "FocusMapApi.Tests\FocusMapApi.Tests.csproj", "{4D7DF7FF-8066-445C-BEAF-9E871C5AB5AD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,6 +16,10 @@ Global
 		{C926321A-EA1E-BFA1-BC2F-0156085F082F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C926321A-EA1E-BFA1-BC2F-0156085F082F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C926321A-EA1E-BFA1-BC2F-0156085F082F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D7DF7FF-8066-445C-BEAF-9E871C5AB5AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D7DF7FF-8066-445C-BEAF-9E871C5AB5AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D7DF7FF-8066-445C-BEAF-9E871C5AB5AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D7DF7FF-8066-445C-BEAF-9E871C5AB5AD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

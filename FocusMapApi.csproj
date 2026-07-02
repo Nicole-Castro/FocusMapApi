@@ -7,6 +7,10 @@
   <ItemGroup>
     <Content Include="Properties\launchSettings.json" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="FocusMapApi.Tests\**\*.cs" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />

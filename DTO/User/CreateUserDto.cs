@@ -12,5 +12,5 @@ public class CreateUserDto
     public string Email { get; set; }
 
     [JsonProperty("password")]
-    public string Password { get; set; }
+    public string? Password { get; set; }
 }
