@@ -32,7 +32,8 @@ namespace FocusMapApi.Controllers.Session
         [HttpGet("{id}/dashboard")]
         public async Task<IActionResult> GetSessionDashboard(Guid id)
         {
-            var result = await _sessionService.getSessionDashboardAsync(id);
+            var (callerId, callerRole) = GetCaller();
+            var result = await _sessionService.getSessionDashboardAsync(id, callerId, callerRole);
             if (result.Success)
             {
                 return Ok(result);
@@ -43,7 +44,8 @@ namespace FocusMapApi.Controllers.Session
         [HttpGet("{id}")]
         public async Task<IActionResult> GetSessionById(Guid id)
         {
-            var result = await _sessionService.GetSessionByIdAsync(id);
+            var (callerId, callerRole) = GetCaller();
+            var result = await _sessionService.GetSessionByIdAsync(id, callerId, callerRole);
             if (result.Success)
             {
                 return Ok(result);
@@ -54,12 +56,21 @@ namespace FocusMapApi.Controllers.Session
         [HttpGet("patient/{patientId}")]
         public async Task<IActionResult> GetSessionsByPatientId(Guid patientId)
         {
-            var result = await _sessionService.GetSessionsByPatientIdAsync(patientId);
+            var (callerId, callerRole) = GetCaller();
+            var result = await _sessionService.GetSessionsByPatientIdAsync(patientId, callerId, callerRole);
             if (result.Success)
             {
                 return Ok(result);
             }
             return StatusCode(result.StatusCode, result);
+        }
+
+        // Só pra não repetir a leitura de claims em cada action acima.
+        private (Guid callerId, string callerRole) GetCaller()
+        {
+            Guid.TryParse(User.FindFirst("UserId")?.Value, out var callerId);
+            var callerRole = User.FindFirst("UserRole")?.Value ?? string.Empty;
+            return (callerId, callerRole);
         }
 
         [HttpPut("{id}")]

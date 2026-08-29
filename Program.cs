@@ -1,8 +1,8 @@
 using System.Text;
-using ACGSimBack.Services.Auth;
 using AspNetCoreRateLimit;
 using FocusMapApi.Data;
 using FocusMapApi.Services.AudioDescription;
+using FocusMapApi.Services.Auth;
 using FocusMapApi.Services.InterestPoints;
 using FocusMapApi.Services.OpenAi;
 using FocusMapApi.Services.SessionData;
@@ -17,9 +17,13 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.Sources.Clear();
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false)
+builder
+    .Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+    .AddJsonFile(
+        $"appsettings.{builder.Environment.EnvironmentName}.json",
+        optional: true,
+        reloadOnChange: false
+    )
     .AddEnvironmentVariables()
     .AddCommandLine(args);
 
@@ -109,6 +113,23 @@ builder.Services.Configure<IpRateLimitOptions>(options =>
             Period = "5m",
             Limit = 10,
         },
+        // Chamadas à OpenAI custam dinheiro por requisição: limite mais apertado que o
+        // geral. O app faz ~2 chamadas a cada 10s por sessão ativa (transcrição + análise),
+        // ou seja, 12/min por dispositivo. Com até 3 dispositivos atrás do mesmo IP/NAT
+        // rodando sessão ao mesmo tempo, 60/min dá folga (3 * 12 = 36) sem deixar um loop
+        // indevido rodar solto.
+        new RateLimitRule
+        {
+            Endpoint = "POST:/api/OpenAI/analyze",
+            Period = "1m",
+            Limit = 60,
+        },
+        new RateLimitRule
+        {
+            Endpoint = "POST:/api/OpenAI/transcribe",
+            Period = "1m",
+            Limit = 60,
+        },
         new RateLimitRule
         {
             Endpoint = "*",
@@ -129,7 +150,33 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 var key = builder.Configuration["Jwt:Key"] ?? "super-secret-key";
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
-builder.Services.AddHttpClient<OpenAiService>();
+builder.Services.AddHttpClient<OpenAiService>(client =>
+{
+    // Evita conexões penduradas segurando capacidade caso a OpenAI demore a responder.
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddSingleton<IOpenAiUsageGuard, OpenAiUsageGuard>();
+
+// Provedor de transcrição é escolhido por config (OpenAI:TranscribeProvider: "openai" | "groq").
+// As duas implementações continuam existindo lado a lado — trocar de volta é só mudar essa
+// config e reiniciar a API, sem precisar mexer em código.
+var transcribeProvider = builder.Configuration["OpenAI:TranscribeProvider"] ?? "openai";
+if (string.Equals(transcribeProvider, "groq", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddHttpClient<GroqTranscriptionService>(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(30);
+    });
+    builder.Services.AddScoped<ITranscriptionService, GroqTranscriptionService>();
+}
+else
+{
+    builder.Services.AddHttpClient<OpenAiTranscriptionService>(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(30);
+    });
+    builder.Services.AddScoped<ITranscriptionService, OpenAiTranscriptionService>();
+}
 
 builder
     .Services.AddAuthentication(options =>
@@ -161,6 +208,7 @@ builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<ISessionDataService, SessionDataService>();
 builder.Services.AddScoped<IOpenAiService, OpenAiService>();
 builder.Services.AddScoped<IAudioDescriptionService, AudioDescriptionService>();
+builder.Services.AddHostedService<SessionAutoCloseService>();
 
 var AllowFrontend =
     builder

@@ -18,6 +18,7 @@ public static class JwtTestHelper
             new("UserId", userId.ToString()),
             new(ClaimTypes.Email, email),
             new("UserRole", role),
+            new(ClaimTypes.Role, role),
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestKey));

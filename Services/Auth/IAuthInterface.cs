@@ -2,7 +2,7 @@ using System;
 using FocusMapApi.DTO.User;
 using FocusMapApi.Models;
 
-namespace ACGSimBack.Services.Auth;
+namespace FocusMapApi.Services.Auth;
 
 public interface IAuthInterface
 {

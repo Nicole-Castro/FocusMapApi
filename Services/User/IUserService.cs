@@ -16,4 +16,9 @@ public interface IUserService
 
     Task<ResponseModel<object>> GetById(Guid id);
     Task<ResponseModel<string>> DeletePatient(Guid patientId, Guid professionalId);
+
+    // ── Admin: gestão de contas Professional ────────────────────────────────
+    Task<ResponseModel<List<ListProfessionalsDto>>> ListProfessionals(string? searchTerm = null);
+    Task<ResponseModel<string>> DeleteProfessional(Guid professionalId);
+    Task<ResponseModel<string>> ResetProfessionalPassword(Guid professionalId);
 }

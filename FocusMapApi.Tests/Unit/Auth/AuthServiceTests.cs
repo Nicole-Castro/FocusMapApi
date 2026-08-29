@@ -1,7 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using ACGSimBack.Services.Auth;
+using FocusMapApi.Services.Auth;
 using FocusMapApi.Data;
 using FocusMapApi.DTO.User;
 using FocusMapApi.Models;
@@ -134,14 +134,14 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task Login_WithUnknownEmail_ShouldReturnNotFound()
+    public async Task Login_WithUnknownEmail_ShouldReturnUnauthorized()
     {
         var service = CreateService(CreateInMemoryContext());
 
         var result = await service.Login(new LoginDto { email = "nobody@test.com", password = "x" });
 
         result.Success.Should().BeFalse();
-        result.StatusCode.Should().Be(404);
+        result.StatusCode.Should().Be(401);
     }
 
     [Fact]
@@ -154,11 +154,45 @@ public class AuthServiceTests
 
         var service = CreateService(context);
 
-        var result = await service.Login(new LoginDto { email = user.Email, password = "any" });
+        var result = await service.Login(new LoginDto { email = user.Email, password = UserBuilder.DefaultPassword });
 
         result.Success.Should().BeTrue();
         result.StatusCode.Should().Be(200);
         result.Data.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Login_WithWrongPassword_ShouldReturnUnauthorized()
+    {
+        var context = CreateInMemoryContext();
+        var user = UserBuilder.Professional();
+        context.Profiles.Add(user);
+        await context.SaveChangesAsync();
+
+        var service = CreateService(context);
+
+        var result = await service.Login(new LoginDto { email = user.Email, password = "wrong-password" });
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(401);
+    }
+
+    [Fact]
+    public async Task Login_WithNoPasswordHashSet_ShouldReturnUnauthorized()
+    {
+        // Conta antiga, criada antes da coluna de senha existir.
+        var context = CreateInMemoryContext();
+        var user = UserBuilder.Professional();
+        user.PasswordHash = null;
+        context.Profiles.Add(user);
+        await context.SaveChangesAsync();
+
+        var service = CreateService(context);
+
+        var result = await service.Login(new LoginDto { email = user.Email, password = "qualquer-coisa" });
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(401);
     }
 
     [Fact]
@@ -172,7 +206,7 @@ public class AuthServiceTests
 
         var service = CreateService(context);
 
-        var result = await service.Login(new LoginDto { email = "doctor@test.com", password = "any" });
+        var result = await service.Login(new LoginDto { email = "doctor@test.com", password = UserBuilder.DefaultPassword });
 
         result.Success.Should().BeTrue();
     }

@@ -1,4 +1,4 @@
-using ACGSimBack.Services.Auth;
+using FocusMapApi.Services.Auth;
 using FocusMapApi.Data;
 using FocusMapApi.DTO.User;
 using FocusMapApi.Models;
@@ -35,7 +35,7 @@ public class UserServiceTests(PostgresContainerFixture postgres) : IAsyncLifetim
     [Fact]
     public async Task CreateUser_WithNewEmail_ShouldReturnSuccess()
     {
-        var dto = new CreateUserDto { Email = "new@test.com", Name = "New User" };
+        var dto = new CreateUserDto { Email = "new@test.com", Name = "New User", Password = "Test@1234" };
 
         var result = await _service.CreateUser(dto);
 
@@ -44,9 +44,20 @@ public class UserServiceTests(PostgresContainerFixture postgres) : IAsyncLifetim
     }
 
     [Fact]
+    public async Task CreateUser_WithoutPassword_ShouldReturnError()
+    {
+        var dto = new CreateUserDto { Email = "nopass@test.com", Name = "No Password" };
+
+        var result = await _service.CreateUser(dto);
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(400);
+    }
+
+    [Fact]
     public async Task CreateUser_ShouldPersistProfessionalInDatabase()
     {
-        var dto = new CreateUserDto { Email = "persisted@test.com", Name = "Persisted User" };
+        var dto = new CreateUserDto { Email = "persisted@test.com", Name = "Persisted User", Password = "Test@1234" };
 
         await _service.CreateUser(dto);
 
@@ -55,12 +66,25 @@ public class UserServiceTests(PostgresContainerFixture postgres) : IAsyncLifetim
     }
 
     [Fact]
-    public async Task CreateUser_WithDuplicateEmail_ShouldReturnError()
+    public async Task CreateUser_ShouldHashPasswordBeforeStoring()
     {
-        var dto = new CreateUserDto { Email = "dup@test.com", Name = "First" };
+        var dto = new CreateUserDto { Email = "hashed@test.com", Name = "Hashed", Password = "Test@1234" };
+
         await _service.CreateUser(dto);
 
-        var result = await _service.CreateUser(new CreateUserDto { Email = "dup@test.com", Name = "Second" });
+        var saved = await _context.Profiles.FirstAsync(u => u.Email == dto.Email);
+        saved.PasswordHash.Should().NotBeNullOrEmpty();
+        saved.PasswordHash.Should().NotBe(dto.Password);
+        BCrypt.Net.BCrypt.Verify(dto.Password, saved.PasswordHash).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CreateUser_WithDuplicateEmail_ShouldReturnError()
+    {
+        var dto = new CreateUserDto { Email = "dup@test.com", Name = "First", Password = "Test@1234" };
+        await _service.CreateUser(dto);
+
+        var result = await _service.CreateUser(new CreateUserDto { Email = "dup@test.com", Name = "Second", Password = "Test@1234" });
 
         result.Success.Should().BeFalse();
         result.StatusCode.Should().Be(400);
@@ -75,7 +99,7 @@ public class UserServiceTests(PostgresContainerFixture postgres) : IAsyncLifetim
         _context.Profiles.Add(professional);
         await _context.SaveChangesAsync();
 
-        var dto = new CreatePatientDto { name = "Patient One", email = "patient@test.com" };
+        var dto = new CreatePatientDto { name = "Patient One", email = "patient@test.com", password = "Test@1234" };
 
         var result = await _service.CreateUserPatient(dto, professional.Id);
 
@@ -94,12 +118,27 @@ public class UserServiceTests(PostgresContainerFixture postgres) : IAsyncLifetim
         _context.Profiles.Add(professional);
         await _context.SaveChangesAsync();
 
-        var dto = new CreatePatientDto { name = "P", email = "dup-patient@test.com" };
+        var dto = new CreatePatientDto { name = "P", email = "dup-patient@test.com", password = "Test@1234" };
         await _service.CreateUserPatient(dto, professional.Id);
 
         var result = await _service.CreateUserPatient(dto, professional.Id);
 
         result.Success.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreateUserPatient_WithoutPassword_ShouldReturnError()
+    {
+        var professional = UserBuilder.Professional();
+        _context.Profiles.Add(professional);
+        await _context.SaveChangesAsync();
+
+        var dto = new CreatePatientDto { name = "No Password", email = "nopass-patient@test.com" };
+
+        var result = await _service.CreateUserPatient(dto, professional.Id);
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(400);
     }
 
     // ── DeletePatient ─────────────────────────────────────────────────────────
@@ -219,6 +258,36 @@ public class UserServiceTests(PostgresContainerFixture postgres) : IAsyncLifetim
     }
 
     [Fact]
+    public async Task UpdateUser_WithPassword_ShouldUpdatePasswordHashAndAllowLoginWithNewPassword()
+    {
+        var user = UserBuilder.Professional();
+        _context.Profiles.Add(user);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.UpdateUser(new UpdateUserDto { name = "New Name", password = "NovaSenha@123" }, user.Id);
+
+        result.Success.Should().BeTrue();
+        var updated = await _context.Profiles.FindAsync(user.Id);
+        BCrypt.Net.BCrypt.Verify("NovaSenha@123", updated!.PasswordHash).Should().BeTrue();
+        // A senha antiga não pode continuar funcionando.
+        BCrypt.Net.BCrypt.Verify(UserBuilder.DefaultPassword, updated.PasswordHash).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UpdateUser_WithoutPassword_ShouldKeepOldPasswordHash()
+    {
+        var user = UserBuilder.Professional();
+        _context.Profiles.Add(user);
+        await _context.SaveChangesAsync();
+        var originalHash = user.PasswordHash;
+
+        await _service.UpdateUser(new UpdateUserDto { name = "New Name" }, user.Id);
+
+        var updated = await _context.Profiles.FindAsync(user.Id);
+        updated!.PasswordHash.Should().Be(originalHash);
+    }
+
+    [Fact]
     public async Task UpdateUser_WithNullName_ShouldKeepOldName()
     {
         var user = UserBuilder.Professional();
@@ -239,6 +308,143 @@ public class UserServiceTests(PostgresContainerFixture postgres) : IAsyncLifetim
 
         result.Success.Should().BeFalse();
         result.StatusCode.Should().Be(404);
+    }
+
+    // ── ListProfessionals ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ListProfessionals_ShouldReturnOnlyProfessionals()
+    {
+        var pro1 = UserBuilder.Professional();
+        var pro2 = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro1.Id);
+        _context.Profiles.AddRange(pro1, pro2, patient);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.ListProfessionals();
+
+        result.Success.Should().BeTrue();
+        result.Data.Should().HaveCount(2);
+        result.Data.Should().OnlyContain(p => p.id == pro1.Id || p.id == pro2.Id);
+    }
+
+    [Fact]
+    public async Task ListProfessionals_WithSearchTerm_ShouldFilterByNameOrEmail()
+    {
+        var match = UserBuilder.Professional();
+        match.Name = "Doutora Ana";
+        match.Email = "doutora.ana@test.com";
+        var other = UserBuilder.Professional();
+        other.Name = "Carlos";
+        other.Email = "carlos@test.com";
+        _context.Profiles.AddRange(match, other);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.ListProfessionals("ana");
+
+        result.Data.Should().HaveCount(1);
+        result.Data![0].id.Should().Be(match.Id);
+    }
+
+    [Fact]
+    public async Task ListProfessionals_ShouldNotIncludeDeleted()
+    {
+        var pro = UserBuilder.Professional();
+        pro.IsDeleted = true;
+        _context.Profiles.Add(pro);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.ListProfessionals();
+
+        result.Data.Should().BeEmpty();
+    }
+
+    // ── DeleteProfessional ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DeleteProfessional_ShouldSetIsDeletedTrue()
+    {
+        var pro = UserBuilder.Professional();
+        _context.Profiles.Add(pro);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.DeleteProfessional(pro.Id);
+
+        result.Success.Should().BeTrue();
+        var rawRecord = await _context.Profiles
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == pro.Id);
+        rawRecord!.IsDeleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteProfessional_NonExistentId_ShouldReturnNotFound()
+    {
+        var result = await _service.DeleteProfessional(Guid.NewGuid());
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(404);
+    }
+
+    [Fact]
+    public async Task DeleteProfessional_OnPatientId_ShouldReturnNotFound()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        _context.Profiles.AddRange(pro, patient);
+        await _context.SaveChangesAsync();
+
+        // Endpoint é só pra Professional — não deve deletar um Patient por engano.
+        var result = await _service.DeleteProfessional(patient.Id);
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(404);
+    }
+
+    // ── ResetProfessionalPassword ────────────────────────────────────────────
+
+    [Fact]
+    public async Task ResetProfessionalPassword_ShouldReturnNewPasswordThatWorks()
+    {
+        var pro = UserBuilder.Professional();
+        _context.Profiles.Add(pro);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.ResetProfessionalPassword(pro.Id);
+
+        result.Success.Should().BeTrue();
+        result.Data.Should().NotBeNullOrEmpty();
+
+        var updated = await _context.Profiles.FirstAsync(u => u.Id == pro.Id);
+        BCrypt.Net.BCrypt.Verify(result.Data, updated.PasswordHash).Should().BeTrue();
+        // Senha antiga não deve mais funcionar.
+        BCrypt.Net.BCrypt.Verify(UserBuilder.DefaultPassword, updated.PasswordHash).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ResetProfessionalPassword_NonExistentId_ShouldReturnNotFound()
+    {
+        var result = await _service.ResetProfessionalPassword(Guid.NewGuid());
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(404);
+    }
+
+    // ── UpdateUserPatient ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateUserPatient_WithPassword_ShouldUpdatePasswordHash()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        _context.Profiles.AddRange(pro, patient);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.UpdateUserPatient(new UpdateUserDto { password = "NovaSenha@123" }, patient.Id);
+
+        result.Success.Should().BeTrue();
+        var updated = await _context.Profiles.FindAsync(patient.Id);
+        BCrypt.Net.BCrypt.Verify("NovaSenha@123", updated!.PasswordHash).Should().BeTrue();
     }
 
     // ── TotalPatients ─────────────────────────────────────────────────────────

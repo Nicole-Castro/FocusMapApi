@@ -42,7 +42,7 @@ public class AuthEndpointTests(PostgresContainerFixture postgres) : IAsyncLifeti
         var response = await _client.PostAsJsonAsync("/api/Login/login", new
         {
             email = user.Email,
-            password = "any",
+            password = UserBuilder.DefaultPassword,
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -50,6 +50,22 @@ public class AuthEndpointTests(PostgresContainerFixture postgres) : IAsyncLifeti
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("success").GetBoolean().Should().BeTrue();
         body.GetProperty("data").GetProperty("token").GetString().Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task Login_WithWrongPassword_ShouldReturn401()
+    {
+        var user = UserBuilder.Professional();
+        _context.Profiles.Add(user);
+        await _context.SaveChangesAsync();
+
+        var response = await _client.PostAsJsonAsync("/api/Login/login", new
+        {
+            email = user.Email,
+            password = "wrong-password",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]

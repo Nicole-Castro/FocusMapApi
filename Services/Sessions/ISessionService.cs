@@ -8,8 +8,8 @@ public interface ISessionService
 {
     Task<ResponseModel<string>> CreateSessionAsync(SessionCreateDto sessionCreateDto);
     Task<ResponseModel<string>> UpdateSessionAsync(Guid id);
-    Task<ResponseModel<SessionDto>> GetSessionByIdAsync(Guid id);
-    Task<ResponseModel<List<SessionDto>>> GetSessionsByPatientIdAsync(Guid patientId);
+    Task<ResponseModel<SessionDto>> GetSessionByIdAsync(Guid id, Guid callerId, string callerRole);
+    Task<ResponseModel<List<SessionDto>>> GetSessionsByPatientIdAsync(Guid patientId, Guid callerId, string callerRole);
     Task<ResponseModel<SessionPagedDto>> GetSessionsByProfessionalIdAsync(
         Guid professionalId,
         int page,
@@ -19,5 +19,5 @@ public interface ISessionService
         DateTime? dateFrom,
         DateTime? dateTo
     );
-    Task<ResponseModel<SessionDashboardDto>> getSessionDashboardAsync(Guid id);
+    Task<ResponseModel<SessionDashboardDto>> getSessionDashboardAsync(Guid id, Guid callerId, string callerRole);
 }

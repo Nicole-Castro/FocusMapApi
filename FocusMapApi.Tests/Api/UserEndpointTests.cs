@@ -35,37 +35,82 @@ public class UserEndpointTests(PostgresContainerFixture postgres) : IAsyncLifeti
             new System.Net.Http.Headers.AuthenticationHeaderValue(
                 "Bearer", JwtTestHelper.GenerateToken(userId, email, role));
 
-    // ── POST /api/User/CreateUser (público) ───────────────────────────────────
+    // ── POST /api/User/CreateUser (admin-only, cadastra Professional) ─────────
 
     [Fact]
-    public async Task CreateUser_WithValidData_ShouldReturn200AndToken()
+    public async Task CreateUser_WithoutToken_ShouldReturn401()
     {
         var response = await _client.PostAsJsonAsync("/api/User/CreateUser", new
         {
             email = "newpro@test.com",
             name = "New Professional",
+            password = "Test@1234",
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("success").GetBoolean().Should().BeTrue();
-        body.GetProperty("data").GetProperty("token").GetString().Should().NotBeNullOrEmpty();
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
-    public async Task CreateUser_WithDuplicateEmail_ShouldReturn200WithSuccessFalse()
+    public async Task CreateUser_AsNonAdmin_ShouldReturn403()
     {
+        var pro = UserBuilder.Professional();
+        _context.Profiles.Add(pro);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(pro.Id, pro.Email, "Professional");
+
+        var response = await _client.PostAsJsonAsync("/api/User/CreateUser", new
+        {
+            email = "newpro2@test.com",
+            name = "New Professional",
+            password = "Test@1234",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task CreateUser_AsAdmin_WithValidData_ShouldReturn200()
+    {
+        var admin = UserBuilder.Admin();
+        _context.Profiles.Add(admin);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(admin.Id, admin.Email, "Admin");
+
+        var response = await _client.PostAsJsonAsync("/api/User/CreateUser", new
+        {
+            email = "newpro3@test.com",
+            name = "New Professional",
+            password = "Test@1234",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("success").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CreateUser_AsAdmin_WithDuplicateEmail_ShouldReturn200WithSuccessFalse()
+    {
+        var admin = UserBuilder.Admin();
+        _context.Profiles.Add(admin);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(admin.Id, admin.Email, "Admin");
+
         await _client.PostAsJsonAsync("/api/User/CreateUser", new
         {
             email = "dup@test.com",
             name = "First",
+            password = "Test@1234",
         });
 
         var response = await _client.PostAsJsonAsync("/api/User/CreateUser", new
         {
             email = "dup@test.com",
             name = "Second",
+            password = "Test@1234",
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -132,11 +177,160 @@ public class UserEndpointTests(PostgresContainerFixture postgres) : IAsyncLifeti
         {
             name = "Patient Test",
             email = "patient-api@test.com",
+            password = "Test@1234",
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("success").GetBoolean().Should().BeTrue();
+    }
+
+    // ── Admin: gestão de contas Professional ──────────────────────────────────
+
+    [Fact]
+    public async Task ListProfessionals_WithoutToken_ShouldReturn401()
+    {
+        var response = await _client.GetAsync("/api/User/ListProfessionals");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ListProfessionals_AsNonAdmin_ShouldReturn403()
+    {
+        var pro = UserBuilder.Professional();
+        _context.Profiles.Add(pro);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(pro.Id, pro.Email, "Professional");
+
+        var response = await _client.GetAsync("/api/User/ListProfessionals");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ListProfessionals_AsAdmin_ShouldReturn200()
+    {
+        var admin = UserBuilder.Admin();
+        var pro = UserBuilder.Professional();
+        _context.Profiles.AddRange(admin, pro);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(admin.Id, admin.Email, "Admin");
+
+        var response = await _client.GetAsync("/api/User/ListProfessionals");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task DeleteProfessional_AsNonAdmin_ShouldReturn403()
+    {
+        var pro = UserBuilder.Professional();
+        _context.Profiles.Add(pro);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(pro.Id, pro.Email, "Professional");
+
+        var response = await _client.DeleteAsync($"/api/User/DeleteProfessional/{pro.Id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task DeleteProfessional_AsAdmin_ShouldReturn200()
+    {
+        var admin = UserBuilder.Admin();
+        var pro = UserBuilder.Professional();
+        _context.Profiles.AddRange(admin, pro);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(admin.Id, admin.Email, "Admin");
+
+        var response = await _client.DeleteAsync($"/api/User/DeleteProfessional/{pro.Id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task ResetProfessionalPassword_AsNonAdmin_ShouldReturn403()
+    {
+        var pro = UserBuilder.Professional();
+        _context.Profiles.Add(pro);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(pro.Id, pro.Email, "Professional");
+
+        var response = await _client.PostAsync($"/api/User/ResetProfessionalPassword/{pro.Id}", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ResetProfessionalPassword_AsAdmin_ShouldReturnNewPassword()
+    {
+        var admin = UserBuilder.Admin();
+        var pro = UserBuilder.Professional();
+        _context.Profiles.AddRange(admin, pro);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(admin.Id, admin.Email, "Admin");
+
+        var response = await _client.PostAsync($"/api/User/ResetProfessionalPassword/{pro.Id}", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("data").GetString().Should().NotBeNullOrEmpty();
+    }
+
+    // ── UpdateUser: dono ou Admin ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task UpdateUser_AsSelf_ShouldReturn200()
+    {
+        var pro = UserBuilder.Professional();
+        _context.Profiles.Add(pro);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(pro.Id, pro.Email, "Professional");
+
+        var response = await _client.PatchAsync($"/api/User/UpdateUser/{pro.Id}",
+            JsonContent.Create(new { name = "Novo Nome" }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task UpdateUser_OnAnotherAccount_AsNonAdmin_ShouldReturn403()
+    {
+        var pro1 = UserBuilder.Professional();
+        var pro2 = UserBuilder.Professional();
+        _context.Profiles.AddRange(pro1, pro2);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(pro1.Id, pro1.Email, "Professional");
+
+        var response = await _client.PatchAsync($"/api/User/UpdateUser/{pro2.Id}",
+            JsonContent.Create(new { name = "Hackeado" }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task UpdateUser_OnAnotherAccount_AsAdmin_ShouldReturn200()
+    {
+        var admin = UserBuilder.Admin();
+        var pro = UserBuilder.Professional();
+        _context.Profiles.AddRange(admin, pro);
+        await _context.SaveChangesAsync();
+
+        AuthorizeAs(admin.Id, admin.Email, "Admin");
+
+        var response = await _client.PatchAsync($"/api/User/UpdateUser/{pro.Id}",
+            JsonContent.Create(new { name = "Renomeado pelo admin" }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     // ── DELETE /api/User/DeletePatient/{id} ───────────────────────────────────

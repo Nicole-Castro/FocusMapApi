@@ -1,8 +1,8 @@
 using System.Reflection.Metadata;
 using System.Security.Claims;
-using ACGSimBack.Services.Auth;
 using FocusMapApi.Data;
 using FocusMapApi.DTO.User;
+using FocusMapApi.Services.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,8 +27,11 @@ namespace FocusMapApi.Controllers.Auth
         {
             dynamic result = await _authService.Login(loginDto);
 
+            // Antes devolvia só a string da mensagem (Unauthorized(result.Message)),
+            // que vira um JSON string solto no corpo — o frontend espera um objeto
+            // com "message", então sempre caía no texto genérico de fallback dele.
             if (result.Success == false)
-                return Unauthorized(result.Message);
+                return Unauthorized(result);
 
             return Ok(result);
         }
@@ -49,13 +52,15 @@ namespace FocusMapApi.Controllers.Auth
             if (user == null)
                 return NotFound(new { Message = "Usuário não encontrado." });
 
-            return Ok(new
-            {
-                id = user.Id,
-                name = user.Name,
-                email = user.Email,
-                role = user.Role.ToString(),
-            });
+            return Ok(
+                new
+                {
+                    id = user.Id,
+                    name = user.Name,
+                    email = user.Email,
+                    role = user.Role.ToString(),
+                }
+            );
         }
 
         [HttpPost("GoogleLogin")]

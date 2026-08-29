@@ -49,7 +49,13 @@ public class SessionService : ISessionService
         }
     }
 
-    public async Task<ResponseModel<SessionDto>> GetSessionByIdAsync(Guid id)
+    // Só o Admin, o próprio paciente da sessão, ou o profissional dono do paciente
+    // podem ver a sessão. Sem isso, qualquer usuário autenticado veria a sessão de
+    // qualquer outra pessoa só sabendo o GUID.
+    private static bool CanAccessPatientData(Guid patientId, Guid? patientsProfessionalId, Guid callerId, string callerRole) =>
+        callerRole == "Admin" || callerId == patientId || (patientsProfessionalId.HasValue && callerId == patientsProfessionalId.Value);
+
+    public async Task<ResponseModel<SessionDto>> GetSessionByIdAsync(Guid id, Guid callerId, string callerRole)
     {
         try
         {
@@ -66,6 +72,17 @@ public class SessionService : ISessionService
                     Success = false,
                     Message = "Session not found",
                     StatusCode = 404,
+                    Data = null,
+                };
+            }
+
+            if (!CanAccessPatientData(session.PatientId, session.Patient?.ProfessionalId, callerId, callerRole))
+            {
+                return new ResponseModel<SessionDto>
+                {
+                    Success = false,
+                    Message = "Acesso negado.",
+                    StatusCode = 403,
                     Data = null,
                 };
             }
@@ -115,7 +132,7 @@ public class SessionService : ISessionService
         }
     }
 
-    public async Task<ResponseModel<SessionDashboardDto>> getSessionDashboardAsync(Guid id)
+    public async Task<ResponseModel<SessionDashboardDto>> getSessionDashboardAsync(Guid id, Guid callerId, string callerRole)
     {
         try
         {
@@ -130,6 +147,17 @@ public class SessionService : ISessionService
                     Success = false,
                     Message = "Session not found",
                     StatusCode = 404,
+                    Data = null,
+                };
+            }
+
+            if (!CanAccessPatientData(session.PatientId, session.Patient?.ProfessionalId, callerId, callerRole))
+            {
+                return new ResponseModel<SessionDashboardDto>
+                {
+                    Success = false,
+                    Message = "Acesso negado.",
+                    StatusCode = 403,
                     Data = null,
                 };
             }
@@ -206,10 +234,35 @@ public class SessionService : ISessionService
         }
     }
 
-    public async Task<ResponseModel<List<SessionDto>>> GetSessionsByPatientIdAsync(Guid patientId)
+    public async Task<ResponseModel<List<SessionDto>>> GetSessionsByPatientIdAsync(Guid patientId, Guid callerId, string callerRole)
     {
         try
         {
+            if (callerRole != "Admin" && callerId != patientId)
+            {
+                var patient = await _context.Profiles
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == patientId);
+
+                if (patient == null)
+                    return new ResponseModel<List<SessionDto>>
+                    {
+                        Success = false,
+                        Message = "Patient not found",
+                        StatusCode = 404,
+                        Data = null,
+                    };
+
+                if (patient.ProfessionalId != callerId)
+                    return new ResponseModel<List<SessionDto>>
+                    {
+                        Success = false,
+                        Message = "Acesso negado.",
+                        StatusCode = 403,
+                        Data = null,
+                    };
+            }
+
             var sessions = await _context.Sessions
                 .AsNoTracking()
                 .Where(s => s.PatientId == patientId)

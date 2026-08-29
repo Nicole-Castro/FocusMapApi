@@ -9,7 +9,9 @@ namespace FocusMapApi.Models;
 public enum UserRole
 {
     Professional,
-    Patient
+    Patient,
+    // Funcionário da empresa — único role autorizado a cadastrar Professionals.
+    Admin
 }
 
 [Table("profiles")]
@@ -36,6 +38,12 @@ public class UserModel
     [Required]
     [Column("role")]
     public UserRole Role { get; set; }
+
+    // Hash BCrypt da senha. Nullable pra não quebrar contas criadas antes dessa coluna
+    // existir — essas ficam sem conseguir logar até terem uma senha definida.
+    [MaxLength(100)]
+    [Column("password_hash")]
+    public string? PasswordHash { get; set; }
 
     [MaxLength(50)]
     [Column("professional_license")]

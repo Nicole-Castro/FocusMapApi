@@ -114,7 +114,7 @@ public class SessionServiceTests(PostgresContainerFixture postgres) : IAsyncLife
         _context.Sessions.Add(session);
         await _context.SaveChangesAsync();
 
-        var result = await _service.GetSessionByIdAsync(session.Id);
+        var result = await _service.GetSessionByIdAsync(session.Id, pro.Id, "Professional");
 
         result.Data!.session_duration.Should().EndWith("s");
         result.Data.session_duration.Should().NotContain("m ");
@@ -133,7 +133,7 @@ public class SessionServiceTests(PostgresContainerFixture postgres) : IAsyncLife
         _context.Sessions.Add(session);
         await _context.SaveChangesAsync();
 
-        var result = await _service.GetSessionByIdAsync(session.Id);
+        var result = await _service.GetSessionByIdAsync(session.Id, pro.Id, "Professional");
 
         result.Data!.session_duration.Should().Contain("m ");
         result.Data.session_duration.Should().NotContain("h ");
@@ -151,7 +151,7 @@ public class SessionServiceTests(PostgresContainerFixture postgres) : IAsyncLife
         _context.Sessions.Add(session);
         await _context.SaveChangesAsync();
 
-        var result = await _service.GetSessionByIdAsync(session.Id);
+        var result = await _service.GetSessionByIdAsync(session.Id, pro.Id, "Professional");
 
         result.Data!.session_duration.Should().Contain("h ");
         result.Data.session_duration.Should().Contain("m ");
@@ -167,7 +167,7 @@ public class SessionServiceTests(PostgresContainerFixture postgres) : IAsyncLife
         _context.Sessions.Add(session);
         await _context.SaveChangesAsync();
 
-        var result = await _service.GetSessionByIdAsync(session.Id);
+        var result = await _service.GetSessionByIdAsync(session.Id, pro.Id, "Professional");
 
         result.Data!.session_duration.Should().BeNull();
     }
@@ -175,10 +175,197 @@ public class SessionServiceTests(PostgresContainerFixture postgres) : IAsyncLife
     [Fact]
     public async Task GetSessionById_WithInvalidId_ShouldReturnNotFound()
     {
-        var result = await _service.GetSessionByIdAsync(Guid.NewGuid());
+        var result = await _service.GetSessionByIdAsync(Guid.NewGuid(), Guid.NewGuid(), "Professional");
 
         result.Success.Should().BeFalse();
         result.StatusCode.Should().Be(404);
+    }
+
+    // ── GetSessionByIdAsync / getSessionDashboardAsync — controle de acesso ───
+
+    [Fact]
+    public async Task GetSessionById_AsOwningProfessional_ShouldSucceed()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        var session = SessionBuilder.InProgress(patient.Id);
+        _context.Profiles.AddRange(pro, patient);
+        _context.Sessions.Add(session);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.GetSessionByIdAsync(session.Id, pro.Id, "Professional");
+
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetSessionById_AsOwnPatient_ShouldSucceed()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        var session = SessionBuilder.InProgress(patient.Id);
+        _context.Profiles.AddRange(pro, patient);
+        _context.Sessions.Add(session);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.GetSessionByIdAsync(session.Id, patient.Id, "Patient");
+
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetSessionById_AsUnrelatedProfessional_ShouldReturnForbidden()
+    {
+        var pro = UserBuilder.Professional();
+        var otherPro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        var session = SessionBuilder.InProgress(patient.Id);
+        _context.Profiles.AddRange(pro, otherPro, patient);
+        _context.Sessions.Add(session);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.GetSessionByIdAsync(session.Id, otherPro.Id, "Professional");
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
+    public async Task GetSessionById_AsUnrelatedPatient_ShouldReturnForbidden()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        var otherPatient = UserBuilder.Patient(pro.Id);
+        var session = SessionBuilder.InProgress(patient.Id);
+        _context.Profiles.AddRange(pro, patient, otherPatient);
+        _context.Sessions.Add(session);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.GetSessionByIdAsync(session.Id, otherPatient.Id, "Patient");
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
+    public async Task GetSessionById_AsAdmin_ShouldSucceed()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        var session = SessionBuilder.InProgress(patient.Id);
+        _context.Profiles.AddRange(pro, patient);
+        _context.Sessions.Add(session);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.GetSessionByIdAsync(session.Id, Guid.NewGuid(), "Admin");
+
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetSessionDashboard_AsUnrelatedPatient_ShouldReturnForbidden()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        var otherPatient = UserBuilder.Patient(pro.Id);
+        var session = SessionBuilder.InProgress(patient.Id);
+        _context.Profiles.AddRange(pro, patient, otherPatient);
+        _context.Sessions.Add(session);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.getSessionDashboardAsync(session.Id, otherPatient.Id, "Patient");
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
+    public async Task GetSessionDashboard_AsOwnPatient_ShouldSucceed()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        var session = SessionBuilder.InProgress(patient.Id);
+        _context.Profiles.AddRange(pro, patient);
+        _context.Sessions.Add(session);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.getSessionDashboardAsync(session.Id, patient.Id, "Patient");
+
+        result.Success.Should().BeTrue();
+    }
+
+    // ── GetSessionsByPatientIdAsync — controle de acesso ──────────────────────
+
+    [Fact]
+    public async Task GetSessionsByPatientId_AsOwnPatient_ShouldSucceed()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        var session = SessionBuilder.InProgress(patient.Id);
+        _context.Profiles.AddRange(pro, patient);
+        _context.Sessions.Add(session);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.GetSessionsByPatientIdAsync(patient.Id, patient.Id, "Patient");
+
+        result.Success.Should().BeTrue();
+        result.Data.Should().ContainSingle(s => s.id == session.Id);
+    }
+
+    [Fact]
+    public async Task GetSessionsByPatientId_AsOwningProfessional_ShouldSucceed()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        _context.Profiles.AddRange(pro, patient);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.GetSessionsByPatientIdAsync(patient.Id, pro.Id, "Professional");
+
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetSessionsByPatientId_AsUnrelatedPatient_ShouldReturnForbidden()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        var otherPatient = UserBuilder.Patient(pro.Id);
+        _context.Profiles.AddRange(pro, patient, otherPatient);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.GetSessionsByPatientIdAsync(patient.Id, otherPatient.Id, "Patient");
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
+    public async Task GetSessionsByPatientId_AsUnrelatedProfessional_ShouldReturnForbidden()
+    {
+        var pro = UserBuilder.Professional();
+        var otherPro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        _context.Profiles.AddRange(pro, otherPro, patient);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.GetSessionsByPatientIdAsync(patient.Id, otherPro.Id, "Professional");
+
+        result.Success.Should().BeFalse();
+        result.StatusCode.Should().Be(403);
+    }
+
+    [Fact]
+    public async Task GetSessionsByPatientId_AsAdmin_ShouldSucceed()
+    {
+        var pro = UserBuilder.Professional();
+        var patient = UserBuilder.Patient(pro.Id);
+        _context.Profiles.AddRange(pro, patient);
+        await _context.SaveChangesAsync();
+
+        var result = await _service.GetSessionsByPatientIdAsync(patient.Id, Guid.NewGuid(), "Admin");
+
+        result.Success.Should().BeTrue();
     }
 
     // ── GetSessionsByProfessionalIdAsync – pagination & filters ───────────────

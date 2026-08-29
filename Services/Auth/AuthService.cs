@@ -8,7 +8,7 @@ using FocusMapApi.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-namespace ACGSimBack.Services.Auth;
+namespace FocusMapApi.Services.Auth;
 
 public class AuthService : IAuthInterface
 {
@@ -34,12 +34,14 @@ public class AuthService : IAuthInterface
         var user = await _context.Profiles
             .FirstOrDefaultAsync(u => u.Email.ToLower() == loginDto.email.ToLower());
 
-        if (user == null)
+        // Mensagem genérica de propósito nos dois casos (usuário não existe / senha errada)
+        // pra não revelar pra quem está tentando adivinhar se um e-mail está cadastrado.
+        if (user == null || !VerifyPassword(loginDto.password, user.PasswordHash))
             return new ResponseModel<object>
             {
                 Success = false,
-                Message = "Usuário não encontrado.",
-                StatusCode = 404,
+                Message = "E-mail ou senha inválidos.",
+                StatusCode = 401,
             };
 
         var jwt = GenerateJwtToken(user);
@@ -60,6 +62,27 @@ public class AuthService : IAuthInterface
         };
     }
 
+    /// <summary>
+    /// Verifica a senha em texto puro contra o hash BCrypt salvo. Contas antigas sem
+    /// hash (criadas antes dessa coluna existir) não conseguem mais logar até
+    /// definirem uma senha — retorna false nesse caso em vez de aceitar qualquer senha.
+    /// </summary>
+    private static bool VerifyPassword(string? plainPassword, string? passwordHash)
+    {
+        if (string.IsNullOrEmpty(plainPassword) || string.IsNullOrEmpty(passwordHash))
+            return false;
+
+        try
+        {
+            return BCrypt.Net.BCrypt.Verify(plainPassword, passwordHash);
+        }
+        catch (BCrypt.Net.SaltParseException)
+        {
+            // Hash salvo em formato inválido/corrompido — trata como senha incorreta.
+            return false;
+        }
+    }
+
     public string GenerateJwtToken(object userObj)
     {
         if (userObj is not UserModel user)
@@ -70,6 +93,9 @@ public class AuthService : IAuthInterface
             new Claim("UserId", user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim("UserRole", user.Role.ToString()),
+            // Claim padrão do ASP.NET Core — permite usar [Authorize(Roles = "Admin")]
+            // nos controllers em vez de checar a claim "UserRole" manualmente.
+            new Claim(ClaimTypes.Role, user.Role.ToString()),
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
